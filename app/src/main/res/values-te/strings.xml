@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Branding & App Identity -->
+    <string name="app_name">రన్ ఫర్ విక్టరీ</string>
+    <string name="app_subtitle">రవి కుమార్ వారిచే</string>
+    <string name="tuition_centre_default">రన్ ఫర్ విక్టరీ ట్యూషన్ సెంటర్</string>
+
+    <!-- General Navigation & Tabs -->
+    <string name="nav_home">హోమ్</string>
+    <string name="nav_attendance">హాజరు</string>
+    <string name="nav_reports">వర్క్ రిపోర్టులు</string>
+    <string name="nav_students">విద్యార్థులు</string>
+    <string name="nav_tutors">ఉపాధ్యాయులు</string>
+    <string name="nav_settings">సెట్టింగ్‌లు</string>
+    <string name="nav_notifications">నోటిఫికేషన్‌లు</string>
+    <string name="nav_profile">ప్రొఫైల్</string>
+
+    <!-- Common Actions -->
+    <string name="action_login">లాగిన్ అవ్వండి</string>
+    <string name="action_logout">లాగ్ అవుట్</string>
+    <string name="action_submit">సమర్పించండి</string>
+    <string name="action_save">సేవ్ చేయండి</string>
+    <string name="action_cancel">రద్దు చేయండి</string>
+    <string name="action_retry">మళ్ళీ ప్రయత్నించండి</string>
+    <string name="action_edit">సవరించండి</string>
+    <string name="action_delete">తొలగించండి</string>
+    <string name="action_archive">ఆర్కైవ్ చేయండి</string>
+    <string name="action_restore">పునరుద్ధరించండి</string>
+    <string name="action_clock_in">క్లాక్ ఇన్</string>
+    <string name="action_clock_out">క్లాక్ అవుట్</string>
+    <string name="action_check_in">చెక్ ఇన్</string>
+    <string name="action_check_out">చెక్ అవుట్</string>
+    <string name="action_filter">ఫిల్టర్</string>
+    <string name="action_search">వెతకండి</string>
+    <string name="action_change_language">భాషను మార్చండి</string>
+
+    <!-- Roles -->
+    <string name="role_owner">ట్యూషన్ యజమాని</string>
+    <string name="role_tutor">ఉపాధ్యాయుడు</string>
+    <string name="role_parent">తల్లిదండ్రులు</string>
+
+    <!-- Authentication -->
+    <string name="auth_email_label">ఈమెయిల్ చిరునామా</string>
+    <string name="auth_password_label">పాస్‌వర్డ్</string>
+    <string name="auth_forgot_password">పాస్‌వర్డ్ మర్చిపోయారా?</string>
+    <string name="auth_reset_password_instruction">పాస్‌వర్డ్ రీసెట్ లింక్ కోసం మీ నమోదిత ఈమెయిల్ ఇవ్వండి.</string>
+    <string name="auth_error_invalid_credentials">చెల్లని ఈమెయిల్ లేదా పాస్‌వర్డ్. దయచేసి మళ్ళీ ప్రయత్నించండి.</string>
+    <string name="auth_error_account_deactivated">ఈ ఖాతా నిలిపివేయబడింది. సెంటర్ యజమానిని సంప్రదించండి.</string>
+    <string name="auth_signing_in">సురక్షితంగా లాగిన్ అవుతోంది…</string>
+
+    <!-- Student Attendance -->
+    <string name="attendance_status_present">హాజరు</string>
+    <string name="attendance_status_late">ఆలస్యం</string>
+    <string name="attendance_status_half_day">హాఫ్ డే</string>
+    <string name="attendance_status_absent">గైర్హాజరు</string>
+    <string name="attendance_arrival_time">రాక సమయం</string>
+    <string name="attendance_departure_time">నిష్క్రమణ సమయం</string>
+    <string name="attendance_duration">వ్యవధి: %1$d నిమిషాలు</string>
+    <string name="attendance_already_checked_in">ఈ రోజు విద్యార్థికి ఇప్పటికే చెక్-ఇన్ చేయబడింది.</string>
+    <string name="attendance_must_check_in_first">చెక్-అవుట్ చేయడానికి ముందు చెక్-ఇన్ అవసరం.</string>
+
+    <!-- Tutor Attendance & GPS -->
+    <string name="tutor_gps_verifying">ఖచ్చితమైన GPS లొకేషన్ పరిశీలిస్తోంది…</string>
+    <string name="tutor_gps_verified">లొకేషన్ ధృవీకరించబడింది (సెంటర్ లోపల)</string>
+    <string name="tutor_gps_rejected_distance">తిరస్కరించబడింది: ట్యూషన్ సెంటర్ పరిధి వెలుపల ఉన్నారు (%1$.1f మీటర్ల దూరం, అనుమతి %2$d మీటర్లు).</string>
+    <string name="tutor_gps_rejected_accuracy">తిరస్కరించబడింది: తక్కువ GPS ఖచ్చితత్వం (%1$.1f మీటర్లు, కావలసినది %2$.1f మీటర్లు).</string>
+    <string name="tutor_gps_override_badge">యజమాని ఆమోదం</string>
+    <string name="tutor_hours_worked_today">ఈ రోజు పనిచేసిన గంటలు: %1$.1f గంటలు</string>
+
+    <!-- Daily Work Reports -->
+    <string name="report_title">రోజువారీ పని నివేదిక</string>
+    <string name="report_subject_label">విషయం (సబ్జెక్ట్)</string>
+    <string name="report_work_completed_label">పూర్తి చేసిన పని / పాఠాలు</string>
+    <string name="report_homework_label">ఇంటి పని (హోంవర్క్)</string>
+    <string name="report_progress_notes_label">ప్రగతి &amp; ప్రవర్తన గమనికలు</string>
+    <string name="report_author_label">ఉపాధ్యాయుడు: %1$s</string>
+    <string name="report_date_label">తేదీ: %1$s</string>
+    <string name="report_submitted_success">వర్క్ రిపోర్ట్ విజయవంతంగా సమర్పించబడింది!</string>
+
+    <!-- Parent Dashboard -->
+    <string name="parent_children_selector">పిల్లలను ఎంచుకోండి</string>
+    <string name="parent_today_summary">ఈ రోజు చదువు నివేదిక</string>
+    <string name="parent_recent_reports">ఇటీవలి వర్క్ రిపోర్టులు</string>
+    <string name="parent_attendance_calendar">హాజరు వివరాలు</string>
+    <string name="parent_no_children_linked">మీ ఖాతాకు ఇంకా పిల్లలు అనుసంధానించబడలేదు. యజమానిని సంప్రదించండి.</string>
+
+    <!-- Errors & Reliability -->
+    <string name="error_network_offline">ఇంటర్నెట్ కనెక్షన్ లేదు. నెట్‌వర్క్ రాగానే మార్పులు సమకాలీకరించబడతాయి.</string>
+    <string name="error_server_generic">సర్వర్‌ను సంప్రదించలేకపోయాము. దయచేసి కాసేపటి తర్వాత ప్రయత్నించండి.</string>
+    <string name="error_location_permission_denied">ఉపాధ్యాయుల హాజరు నమోదుకు లొకేషన్ అనుమతి తప్పనిసరి.</string>
+    <string name="error_required_field">ఈ వివరాలు తప్పనిసరిగా నమోదు చేయాలి.</string>
+</resources>

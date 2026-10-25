@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Disable specific lint warnings for debug builds -->
+    <issue id="IconMissingDensityFolder" severity="ignore" />
+    <issue id="VectorPath" severity="warning" />
+    <issue id="HardcodedText" severity="warning" />
+</lint>

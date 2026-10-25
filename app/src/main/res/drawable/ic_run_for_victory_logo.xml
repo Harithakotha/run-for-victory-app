@@ -1,0 +1,38 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Deep Navy Circular Shield Background -->
+    <path
+        android:fillColor="#0A192F"
+        android:pathData="M54,4 C26.39,4 4,26.39 4,54 C4,81.61 26.39,104 54,104 C81.61,104 104,81.61 104,54 C104,26.39 81.61,4 54,4 Z" />
+    
+    <!-- Outer Gold Honor Ring -->
+    <path
+        android:strokeColor="#D97706"
+        android:strokeWidth="3"
+        android:pathData="M54,10 C29.7,10 10,29.7 10,54 C10,78.3 29.7,98 54,98 C78.3,98 98,78.3 98,54 C98,29.7 78.3,10 54,10 Z" />
+
+    <!-- Vibrant Teal Academic Open Book / Laurel Wings -->
+    <path
+        android:fillColor="#0D9488"
+        android:pathData="M54,62 C45,55 32,54 22,58 L22,78 C32,74 45,75 54,82 C63,75 76,74 86,78 L86,58 C76,54 63,55 54,62 Z" />
+
+    <!-- Radiant Gold Victory Torch / Star Emblem -->
+    <!-- Graduation Cap / Diamond Motif -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M54,24 L78,38 L54,50 L30,38 Z" />
+    
+    <!-- Cap Tassel in Gold -->
+    <path
+        android:strokeColor="#D97706"
+        android:strokeWidth="2.5"
+        android:pathData="M72,42 L72,56 C72,58 75,60 76,60" />
+
+    <!-- Center Torch Flame (Run for Victory Spark) -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,30 C56,36 60,39 54,46 C48,39 52,36 54,30 Z" />
+</vector>

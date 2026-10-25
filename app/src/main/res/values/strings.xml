@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Branding & App Identity -->
+    <string name="app_name">Run for Victory</string>
+    <string name="app_subtitle">By Ravi Kumar</string>
+    <string name="tuition_centre_default">Run for Victory Tuition Centre</string>
+
+    <!-- General Navigation & Tabs -->
+    <string name="nav_home">Home</string>
+    <string name="nav_attendance">Attendance</string>
+    <string name="nav_reports">Work Reports</string>
+    <string name="nav_students">Students</string>
+    <string name="nav_tutors">Tutors</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_notifications">Notifications</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Common Actions -->
+    <string name="action_login">Sign In</string>
+    <string name="action_logout">Sign Out</string>
+    <string name="action_submit">Submit</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_clock_in">Clock In</string>
+    <string name="action_clock_out">Clock Out</string>
+    <string name="action_check_in">Check In</string>
+    <string name="action_check_out">Check Out</string>
+    <string name="action_filter">Filter</string>
+    <string name="action_search">Search</string>
+    <string name="action_change_language">Language / భాష</string>
+
+    <!-- Roles -->
+    <string name="role_owner">Tuition Owner</string>
+    <string name="role_tutor">Tutor</string>
+    <string name="role_parent">Parent</string>
+
+    <!-- Authentication -->
+    <string name="auth_email_label">Email Address</string>
+    <string name="auth_password_label">Password</string>
+    <string name="auth_forgot_password">Forgot Password?</string>
+    <string name="auth_reset_password_instruction">Enter your registered email to receive password reset instructions.</string>
+    <string name="auth_error_invalid_credentials">Invalid email or password. Please try again.</string>
+    <string name="auth_error_account_deactivated">This account has been deactivated. Contact the centre owner.</string>
+    <string name="auth_signing_in">Signing in securely…</string>
+
+    <!-- Student Attendance -->
+    <string name="attendance_status_present">Present</string>
+    <string name="attendance_status_late">Late</string>
+    <string name="attendance_status_half_day">Half Day</string>
+    <string name="attendance_status_absent">Absent</string>
+    <string name="attendance_arrival_time">Arrival</string>
+    <string name="attendance_departure_time">Departure</string>
+    <string name="attendance_duration">Duration: %1$d mins</string>
+    <string name="attendance_already_checked_in">Student is already checked in for today.</string>
+    <string name="attendance_must_check_in_first">Check-in required before check-out.</string>
+
+    <!-- Tutor Attendance & GPS -->
+    <string name="tutor_gps_verifying">Acquiring accurate GPS location…</string>
+    <string name="tutor_gps_verified">Location Verified (Inside Centre)</string>
+    <string name="tutor_gps_rejected_distance">Rejected: Outside permitted radius (%1$.1f m away, max %2$d m).</string>
+    <string name="tutor_gps_rejected_accuracy">Rejected: Inaccurate GPS (%1$.1f m accuracy, required %2$.1f m).</string>
+    <string name="tutor_gps_override_badge">Owner Override</string>
+    <string name="tutor_hours_worked_today">Hours Worked Today: %1$.1f hrs</string>
+
+    <!-- Daily Work Reports -->
+    <string name="report_title">Daily Work Report</string>
+    <string name="report_subject_label">Subject</string>
+    <string name="report_work_completed_label">Work Completed</string>
+    <string name="report_homework_label">Homework Assigned</string>
+    <string name="report_progress_notes_label">Progress &amp; Behaviour Notes</string>
+    <string name="report_author_label">Teacher: %1$s</string>
+    <string name="report_date_label">Date: %1$s</string>
+    <string name="report_submitted_success">Work report submitted successfully!</string>
+
+    <!-- Parent Dashboard -->
+    <string name="parent_children_selector">Select Child</string>
+    <string name="parent_today_summary">Today\'s Academic Summary</string>
+    <string name="parent_recent_reports">Recent Work Reports</string>
+    <string name="parent_attendance_calendar">Attendance Record</string>
+    <string name="parent_no_children_linked">No children linked to your parent account yet. Please contact the centre owner.</string>
+
+    <!-- Errors & Reliability -->
+    <string name="error_network_offline">No internet connection. Changes will sync when reconnected.</string>
+    <string name="error_server_generic">Unable to reach the server. Please try again later.</string>
+    <string name="error_location_permission_denied">Location permission is required for tutor clock-in.</string>
+    <string name="error_required_field">This field is required.</string>
+</resources>
