@@ -49,15 +49,34 @@
     <string name="auth_signing_in">సురక్షితంగా లాగిన్ అవుతోంది…</string>
 
     <!-- Student Attendance -->
+    <string name="attendance_register_title">విద్యార్థుల హాజరు పట్టిక</string>
     <string name="attendance_status_present">హాజరు</string>
     <string name="attendance_status_late">ఆలస్యం</string>
     <string name="attendance_status_half_day">హాఫ్ డే</string>
     <string name="attendance_status_absent">గైర్హాజరు</string>
+    <string name="attendance_status_excused">సెలవు / మినహాయింపు</string>
+    <string name="attendance_status_not_recorded">నమోదు కాలేదు</string>
     <string name="attendance_arrival_time">రాక సమయం</string>
     <string name="attendance_departure_time">నిష్క్రమణ సమయం</string>
     <string name="attendance_duration">వ్యవధి: %1$d నిమిషాలు</string>
     <string name="attendance_already_checked_in">ఈ రోజు విద్యార్థికి ఇప్పటికే చెక్-ఇన్ చేయబడింది.</string>
     <string name="attendance_must_check_in_first">చెక్-అవుట్ చేయడానికి ముందు చెక్-ఇన్ అవసరం.</string>
+    <string name="attendance_daily_summary">రోజువారీ సారాంశం</string>
+    <string name="attendance_monthly_summary">నెలవారీ సారాంశం</string>
+    <string name="attendance_correct_title">హాజరు రికార్డు సవరణ</string>
+    <string name="attendance_correction_reason_label">సవరణ కారణం (ఆడిట్ కోసం తప్పనిసరి)</string>
+    <string name="attendance_correction_reason_error">దయచేసి సవరణకు కారణాన్ని నమోదు చేయండి (కనీసం 5 అక్షరాలు).</string>
+    <string name="attendance_history_title">హాజరు చరిత్ర</string>
+    <string name="attendance_session_active">నడుస్తోంది: %1$s</string>
+    <string name="attendance_completed">పూర్తయింది: %1$s</string>
+    <string name="attendance_rate_label">హాజరు శాతం: %1$.1f%%</string>
+    <string name="attendance_total_students">మొత్తం విద్యార్థులు</string>
+    <string name="attendance_today_button">ఈ రోజు</string>
+    <string name="attendance_select_date">తేదీని ఎంచుకోండి</string>
+    <string name="attendance_filter_all">అన్ని స్థితులు</string>
+    <string name="attendance_history_empty">ఈ విద్యార్థికి సంబంధించిన హాజరు రికార్డులు కనుగొనబడలేదు.</string>
+    <string name="attendance_no_records_for_date">ఈ తేదీకి సంబంధించి హాజరు నమోదు కాలేదు.</string>
+
 
     <!-- Tutor Attendance & GPS -->
     <string name="tutor_gps_verifying">ఖచ్చితమైన GPS లొకేషన్ పరిశీలిస్తోంది…</string>
@@ -89,4 +108,42 @@
     <string name="error_server_generic">సర్వర్‌ను సంప్రదించలేకపోయాము. దయచేసి కాసేపటి తర్వాత ప్రయత్నించండి.</string>
     <string name="error_location_permission_denied">ఉపాధ్యాయుల హాజరు నమోదుకు లొకేషన్ అనుమతి తప్పనిసరి.</string>
     <string name="error_required_field">ఈ వివరాలు తప్పనిసరిగా నమోదు చేయాలి.</string>
+
+    <!-- Location Permission Rationale & GPS Alert -->
+    <string name="location_permission_rationale_title">లొకేషన్ అనుమతి తప్పనిసరి</string>
+    <string name="location_permission_rationale_message">రన్ ఫర్ విక్టరీ యాప్ మీరు క్లాక్-ఇన్ లేదా క్లాక్-అవుట్ చేసినప్పుడు మాత్రమే మీరు ట్యూషన్ సెంటర్ ప్రాంగణంలో (150 మీటర్ల పరిధిలో) ఉన్నారో లేదో ధృవీకరించడానికి ఫోర్‌గ్రౌండ్ GPS ని ఉపయోగిస్తుంది. బ్యాక్‌గ్రౌండ్‌లో ఎటువంటి లొకేషన్ ట్రాక్ చేయబడదు.</string>
+    <string name="action_grant_permission">అనుమతి ఇవ్వండి</string>
+    <string name="action_not_now">ఇప్పుడు కాదు</string>
+    <string name="gps_disabled_title">లొకేషన్ సేవలు నిలిపివేయబడ్డాయి</string>
+    <string name="gps_disabled_message">డివైస్ GPS లేదా లొకేషన్ సేవలు ఆఫ్‌లో ఉన్నాయి. హాజరు నమోదు కోసం దయచేసి సెట్టింగ్స్‌లో లొకేషన్ ఆన్ చేయండి.</string>
+    <string name="action_open_settings">సెట్టింగ్స్ తెరవండి</string>
+
+    <!-- Teacher Attendance Details & Summaries -->
+    <string name="tutor_shift_active">యాక్టివ్ డ్యూటీ కొనసాగుతోంది</string>
+    <string name="tutor_shift_ready">హాజరు నమోదుకు సిద్ధంగా ఉంది</string>
+    <string name="tutor_monthly_summary_title">ఈ నెల హాజరు సారాంశం</string>
+    <string name="tutor_days_worked">పనిచేసిన రోజులు</string>
+    <string name="tutor_total_hours">మొత్తం గంటలు</string>
+    <string name="tutor_verified_sessions">ధృవీకరించబడినవి</string>
+    <string name="tutor_overridden_sessions">ప్రత్యేక ఆమోదం</string>
+    <string name="tutor_recent_history_title">నా హాజరు చరిత్ర</string>
+    <string name="tutor_empty_history">ఈ నెలకు సంబంధించి ఎటువంటి హాజరు రికార్డులు లేవు.</string>
+    <string name="tutor_status_verified">ధృవీకరించబడింది</string>
+    <string name="tutor_status_rejected">తిరస్కరించబడింది</string>
+    <string name="tutor_status_overridden">యజమాని ఆమోదం</string>
+    <string name="tutor_clock_in_time">ప్రవేశం: %1$s</string>
+    <string name="tutor_clock_out_time">నిష్క్రమణ: %1$s</string>
+    <string name="tutor_duration_format">వ్యవధి: %1$dగం %2$dని</string>
+    <string name="tutor_reading_details">సెంటర్ నుండి %1$.1fమీ • ±%2$dమీ ఖచ్చితత్వం</string>
+    <string name="tutor_override_info">%1$s ద్వారా ప్రత్యేక ఆమోదం: %2$s</string>
+    <string name="tutor_gps_disclaimer">GPS ధృవీకరణ సామీప్య ఆధారాలను మాత్రమే అందిస్తుంది. వాస్తవ హాజరు యజమాని తనిఖీ మరియు దిద్దుబాట్లకు లోబడి ఉంటుంది.</string>
+
+    <!-- Owner Review & Overrides -->
+    <string name="owner_tutor_review_title">ఉపాధ్యాయుల హాజరు సమీక్ష &amp; దిద్దుబాట్లు</string>
+    <string name="owner_tutor_override_action">సమీక్షించండి &amp; ఆమోదించండి</string>
+    <string name="owner_override_dialog_title">ఉపాధ్యాయుడి హాజరు ప్రత్యేక ఆమోదం</string>
+    <string name="owner_override_reason_label">తప్పనిసరి ఆడిట్ కారణం (కనీసం 5 అక్షరాలు)</string>
+    <string name="owner_override_reason_hint">ఆమోదానికి గల కారణాన్ని నమోదు చేయండి</string>
+    <string name="owner_override_submit">దిద్దుబాటును ఆమోదించండి</string>
+    <string name="owner_override_success">ఉపాధ్యాయుడి హాజరు దిద్దుబాటు ఆడిట్ లాగ్‌లో నమోదు చేయబడింది.</string>
 </resources>

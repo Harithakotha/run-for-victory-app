@@ -47,6 +47,17 @@
   - Student notes and archival audit fields (`archived_by`, `archived_at`, `archive_reason`).
   - Audited archive and restore RPCs.
   - Restricted permanent deletion RPC requiring explicit confirmation phrase verification and justification.
+- [`20261025_006_student_attendance_enhancements.sql`](file:///C:/Users/Nikitha%20kotha/.gemini/antigravity/scratch/run_for_victory/supabase/migrations/20261025_006_student_attendance_enhancements.sql):
+  - Support for `EXCUSED` attendance status.
+  - Idempotent check-in and check-out RPCs preventing duplicates during network retries.
+  - Server-side trusted timestamps evaluated in `Asia/Kolkata` (IST, UTC+05:30).
+  - Audited owner attendance correction RPC logging to `audit_logs`.
+  - Daily and monthly attendance aggregation functions.
+- [`20261025_007_teacher_attendance_enhancements.sql`](file:///C:/Users/Nikitha%20kotha/.gemini/antigravity/scratch/run_for_victory/supabase/migrations/20261025_007_teacher_attendance_enhancements.sql):
+  - Centre GPS settings: `max_location_age_seconds` (120s), `owner_override_policy`.
+  - Enhanced teacher attendance table with `override_at` and `is_mock_flagged`.
+  - Server-side trusted RPCs: `record_teacher_clock_in` and `record_teacher_clock_out` with anti-staleness, mock rejection, Haversine geofence calculation, and single open session enforcement.
+  - Audited `owner_override_teacher_attendance` RPC capturing actor, timestamp, and mandatory reason.
 
 ### 2. Secure Initial Owner Account Creation Procedure
 Because public registration must **never** grant privileged owner permissions, the initial tuition-centre owner account is provisioned directly via trusted administrative database initialization:
@@ -119,6 +130,15 @@ INSERT INTO public.profiles (
 ## 📱 Android Client Implementation
 
 ### 1. Key Modules & Features
+- **Student Attendance Register (`features/attendance/StudentAttendanceScreen.kt`)**:
+  - Live active student roster displaying student name, grade/class, status badge, check-in time, check-out time, and current session duration (e.g. `Active: 2h 15m` or `Completed: 3h 00m`).
+  - Action buttons: Check-in with status selection (`PRESENT`, `LATE`, `EXCUSED`, `ABSENT`), Check-out button (only active when checked in without departure).
+  - Date navigation strip with previous day, next day (future dates disabled), and "Today" button in `Asia/Kolkata` (IST).
+  - Daily Summary tab: Total active students, present, late, excused, absent, unrecorded counts, and attendance rate %.
+  - Monthly Summary tab: Total sessions, status breakdown, and monthly attendance average %.
+  - Student attendance history sheet with chronological records and duration breakdown.
+  - Owner-authorised attendance correction dialog with mandatory reason audit logging and departure time validation.
+  - In-flight request debouncing and idempotency replay safety during network retries.
 - **Student Management Directory (`features/owner/StudentManagementScreen.kt`)**:
   - Live search by student name, contact number, or guardian phone.
   - Filter chips for Class/Grade and segmented status tabs (Active vs Archived).
@@ -155,10 +175,11 @@ node supabase/tests/verify_security_rules.js
 - **Bonus Test 10 (GPS Accuracy)**: Inaccurate GPS reading (>60m) is rejected. ➔ **PASS**
 
 ### 2. Android Client Tests & Build
-- `.\gradlew.bat testDebugUnitTest` ➔ **35 unit tests passed, 0 failures**:
+- `.\gradlew.bat testDebugUnitTest` ➔ **50 unit tests passed, 0 failures**:
+  - `StudentAttendanceTest`: 15/15 tests passed (arrival/departure, duplicate check-in, duplicate checkout, check-out without check-in, network retry idempotency replay, archived student guard, owner correction with audit trail, non-owner rejection, invalid reason rejection, departure earlier than arrival rejection, excused status, daily summary, monthly summary, midnight/timezone boundary in `Asia/Kolkata`).
+  - `StudentManagementTest`: 8/8 tests passed (create, edit, duplicate rejection, archive, active list exclusion, restore, history preservation, permanent deletion guard).
   - `AccountManagementTest`: 7/7 tests passed (session expiry, token validation, user deactivation, role protection).
   - `AuthValidationTest`: 6/6 tests passed (credential validation, email formatting).
-  - `StudentManagementTest`: 8/8 tests passed (create, edit, duplicate rejection, archive, active list exclusion, restore, history preservation, permanent deletion guard).
   - `AttendanceValidationTest`: 3/3 tests passed.
   - `WorkReportValidationTest`: 3/3 tests passed.
   - `HaversineDistanceTest`: 3/3 tests passed.

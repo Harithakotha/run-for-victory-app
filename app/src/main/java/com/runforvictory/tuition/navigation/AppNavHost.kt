@@ -11,6 +11,8 @@ import com.runforvictory.tuition.authentication.AuthViewModel
 import com.runforvictory.tuition.authentication.LoginScreen
 import com.runforvictory.tuition.core.di.AppContainer
 import com.runforvictory.tuition.domain.UserRole
+import com.runforvictory.tuition.features.attendance.StudentAttendanceScreen
+import com.runforvictory.tuition.features.attendance.StudentAttendanceViewModel
 import com.runforvictory.tuition.features.owner.OwnerDashboardScreen
 import com.runforvictory.tuition.features.owner.StudentManagementScreen
 import com.runforvictory.tuition.features.owner.StudentManagementViewModel
@@ -47,8 +49,12 @@ fun AppNavHost(
 
         composable(Screen.OwnerDashboard.route) {
             OwnerDashboardScreen(
+                attendanceRepository = appContainer.attendanceRepository,
                 onNavigateToStudents = {
                     navController.navigate(Screen.StudentManagement.route)
+                },
+                onNavigateToAttendance = {
+                    navController.navigate(Screen.StudentAttendance.route)
                 },
                 onSignOut = {
                     authViewModel.signOut()
@@ -76,8 +82,45 @@ fun AppNavHost(
             )
         }
 
+        composable(Screen.StudentAttendance.route) {
+            val attendanceVm: StudentAttendanceViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return StudentAttendanceViewModel(
+                            attendanceRepository = appContainer.attendanceRepository,
+                            studentRepository = appContainer.studentRepository,
+                            authRepository = appContainer.authRepository
+                        ) as T
+                    }
+                }
+            )
+            StudentAttendanceScreen(
+                viewModel = attendanceVm,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
         composable(Screen.TutorDashboard.route) {
+            val tutorVm: com.runforvictory.tuition.features.tutor.TutorAttendanceViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return com.runforvictory.tuition.features.tutor.TutorAttendanceViewModel(
+                            attendanceRepository = appContainer.attendanceRepository,
+                            authRepository = appContainer.authRepository,
+                            locationProvider = appContainer.locationProvider
+                        ) as T
+                    }
+                }
+            )
             TutorDashboardScreen(
+                viewModel = tutorVm,
+                onNavigateToAttendance = {
+                    navController.navigate(Screen.StudentAttendance.route)
+                },
                 onSignOut = {
                     authViewModel.signOut()
                     navController.navigate(Screen.Login.route) {

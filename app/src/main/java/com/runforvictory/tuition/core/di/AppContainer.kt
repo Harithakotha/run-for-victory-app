@@ -27,10 +27,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import com.runforvictory.tuition.domain.AttendanceDailySummary
+import com.runforvictory.tuition.domain.AttendanceMonthlySummary
+import com.runforvictory.tuition.domain.TutorMonthlySummary
+import com.runforvictory.tuition.location.HaversineUtil
+import kotlinx.coroutines.flow.first
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 interface AppContainer {
     val dispatchers: DispatcherProvider
@@ -40,9 +48,12 @@ interface AppContainer {
     val attendanceRepository: AttendanceRepository
     val workReportRepository: WorkReportRepository
     val tuitionCenterRepository: TuitionCenterRepository
+    val locationProvider: com.runforvictory.tuition.location.FreshLocationProvider
 }
 
-class DefaultAppContainer : AppContainer {
+class DefaultAppContainer(
+    private val context: android.content.Context? = null
+) : AppContainer {
     override val dispatchers: DispatcherProvider = DefaultDispatcherProvider()
     override val sessionStorage: SessionStorage = InMemorySessionStorage()
 
@@ -55,7 +66,7 @@ class DefaultAppContainer : AppContainer {
     }
 
     override val attendanceRepository: AttendanceRepository by lazy {
-        FakeAttendanceRepository()
+        DefaultAttendanceRepository(authRepository, studentRepository)
     }
 
     override val workReportRepository: WorkReportRepository by lazy {
@@ -64,6 +75,14 @@ class DefaultAppContainer : AppContainer {
 
     override val tuitionCenterRepository: TuitionCenterRepository by lazy {
         FakeTuitionCenterRepository()
+    }
+
+    override val locationProvider: com.runforvictory.tuition.location.FreshLocationProvider by lazy {
+        if (context != null) {
+            com.runforvictory.tuition.location.FreshLocationManager(context)
+        } else {
+            com.runforvictory.tuition.location.FakeFreshLocationProvider()
+        }
     }
 }
 
@@ -511,18 +530,593 @@ class DefaultStudentRepository(
     }
 }
 
-internal class FakeAttendanceRepository : AttendanceRepository {
-    override suspend fun recordStudentCheckIn(studentId: String, notes: String?): Resource<StudentAttendanceRecord> =
-        Resource.Success(StudentAttendanceRecord("att-1", studentId, "Sample Student", LocalDate.now(), ZonedDateTime.now()))
-    override suspend fun recordStudentCheckOut(studentId: String): Resource<StudentAttendanceRecord> =
-        Resource.Success(StudentAttendanceRecord("att-1", studentId, "Sample Student", LocalDate.now(), ZonedDateTime.now().minusHours(2), ZonedDateTime.now(), durationMinutes = 120))
-    override fun getStudentAttendanceForDate(date: LocalDate): Flow<List<StudentAttendanceRecord>> = MutableStateFlow(emptyList())
-    override fun getAttendanceForStudent(studentId: String): Flow<List<StudentAttendanceRecord>> = MutableStateFlow(emptyList())
-    override suspend fun recordTutorCheckIn(lat: Double, lng: Double, accuracy: Float): Resource<TutorAttendanceRecord> =
-        Resource.Success(TutorAttendanceRecord("t-1", "tutor-1", LocalDate.now(), ZonedDateTime.now(), checkInDistanceMeters = 25.0, checkInAccuracyMeters = accuracy.toDouble(), verificationStatus = GpsVerificationStatus.VERIFIED))
-    override suspend fun recordTutorCheckOut(lat: Double, lng: Double, accuracy: Float): Resource<TutorAttendanceRecord> =
-        Resource.Success(TutorAttendanceRecord("t-1", "tutor-1", LocalDate.now(), ZonedDateTime.now().minusHours(3), ZonedDateTime.now(), checkInDistanceMeters = 25.0, checkInAccuracyMeters = accuracy.toDouble(), verificationStatus = GpsVerificationStatus.VERIFIED, durationMinutes = 180))
-    override fun getTutorAttendanceForMonth(tutorId: String, year: Int, month: Int): Flow<List<TutorAttendanceRecord>> = MutableStateFlow(emptyList())
+class DefaultAttendanceRepository(
+    private val authRepository: AuthRepository,
+    private val studentRepository: StudentRepository
+) : AttendanceRepository {
+
+    private val kolkataZone: ZoneId = ZoneId.of("Asia/Kolkata")
+
+    // Concurrent idempotency trackers for in-flight and retried requests
+    private val checkInIdempotencyCache = ConcurrentHashMap<String, StudentAttendanceRecord>()
+    private val checkOutIdempotencyCache = ConcurrentHashMap<String, StudentAttendanceRecord>()
+
+    // Seeded historical attendance
+    private val attendanceState = MutableStateFlow<List<StudentAttendanceRecord>>(
+        listOf(
+            StudentAttendanceRecord(
+                id = "att-seed-1",
+                studentId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                studentName = "Rahul Reddy",
+                studentGrade = "Class 10",
+                attendanceDate = LocalDate.now(ZoneId.of("Asia/Kolkata")).minusDays(1),
+                checkInTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(1).withHour(9).withMinute(0),
+                checkOutTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(1).withHour(12).withMinute(0),
+                status = StudentAttendanceStatus.PRESENT,
+                notes = "On time, active participation",
+                durationMinutes = 180,
+                recordedBy = "22222222-2222-2222-2222-222222222222",
+                recordedByName = "Anand Rao (Maths Tutor)"
+            ),
+            StudentAttendanceRecord(
+                id = "att-seed-2",
+                studentId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                studentName = "Pooja Devi",
+                studentGrade = "Class 12",
+                attendanceDate = LocalDate.now(ZoneId.of("Asia/Kolkata")).minusDays(1),
+                checkInTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(1).withHour(9).withMinute(15),
+                checkOutTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(1).withHour(12).withMinute(45),
+                status = StudentAttendanceStatus.PRESENT,
+                notes = "Physics doubt clarification",
+                durationMinutes = 210,
+                recordedBy = "22222222-2222-2222-2222-222222222222",
+                recordedByName = "Anand Rao (Maths Tutor)"
+            ),
+            StudentAttendanceRecord(
+                id = "att-seed-3",
+                studentId = "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                studentName = "Vikram Singh",
+                studentGrade = "Class 9",
+                attendanceDate = LocalDate.now(ZoneId.of("Asia/Kolkata")).minusDays(3),
+                checkInTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(3).withHour(9).withMinute(30),
+                checkOutTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(3).withHour(11).withMinute(30),
+                status = StudentAttendanceStatus.PRESENT,
+                notes = "Historical attendance before archival",
+                durationMinutes = 120,
+                recordedBy = "11111111-1111-1111-1111-111111111111",
+                recordedByName = "Ravi Kumar (Owner)"
+            )
+        )
+    )
+
+    private val tutorAttendanceState = MutableStateFlow<List<TutorAttendanceRecord>>(
+        listOf(
+            TutorAttendanceRecord(
+                id = "tutor-seed-1",
+                tutorId = "22222222-2222-2222-2222-222222222222",
+                tutorName = "Anand Rao (Tutor)",
+                centreId = "10000000-0000-0000-0000-000000000001",
+                attendanceDate = LocalDate.now(kolkataZone).minusDays(1),
+                checkInTime = ZonedDateTime.now(kolkataZone).minusDays(1).withHour(9).withMinute(0),
+                checkOutTime = ZonedDateTime.now(kolkataZone).minusDays(1).withHour(13).withMinute(0),
+                checkInLat = 17.385044,
+                checkInLng = 78.486671,
+                checkInDistanceMeters = 15.2,
+                checkInAccuracyMeters = 12.0,
+                verificationStatus = GpsVerificationStatus.VERIFIED,
+                durationMinutes = 240
+            )
+        )
+    )
+
+    private val centreLatitude = 17.385044
+    private val centreLongitude = 78.486671
+    private val permittedRadiusMeters = 150
+    private val maxAccuracyMeters = 60.0
+    private val maxLocationAgeSeconds = 120L
+
+    override suspend fun recordStudentCheckIn(
+        studentId: String,
+        status: StudentAttendanceStatus,
+        notes: String?,
+        idempotencyKey: String
+    ): Resource<StudentAttendanceRecord> {
+        val currentUser = authRepository.getCurrentUser()
+        if (currentUser?.role != UserRole.OWNER && currentUser?.role != UserRole.TUTOR) {
+            return Resource.Error("Access Denied: Only tutors or owners can record student attendance.")
+        }
+
+        // Idempotency replay check
+        checkInIdempotencyCache[idempotencyKey]?.let { return Resource.Success(it) }
+
+        val studentRes = studentRepository.getStudentById(studentId)
+        if (studentRes !is Resource.Success) {
+            return Resource.Error("Student not found.")
+        }
+        val student = studentRes.data
+
+        // Rule: Archived students cannot receive new attendance records
+        if (student.status == StudentStatus.ARCHIVED || student.isArchived) {
+            return Resource.Error("Archived Student: Cannot mark attendance for archived student \"${student.fullName}\".")
+        }
+
+        // Rule: Interpret attendance dates in Asia/Kolkata
+        val todayInKolkata = LocalDate.now(kolkataZone)
+
+        // Rule: Prevent duplicate attendance sessions for the same student and date
+        val existingSession = attendanceState.value.find {
+            it.studentId == studentId && it.attendanceDate == todayInKolkata
+        }
+        if (existingSession != null) {
+            return Resource.Error("Duplicate Attendance: Student \"${student.fullName}\" already has attendance recorded for today ($todayInKolkata).")
+        }
+
+        // Trusted server timestamp in Asia/Kolkata
+        val serverNow = ZonedDateTime.now(kolkataZone)
+
+        val newRecord = StudentAttendanceRecord(
+            id = UUID.randomUUID().toString(),
+            centreId = student.centreId,
+            studentId = studentId,
+            studentName = student.fullName,
+            studentGrade = student.grade,
+            attendanceDate = todayInKolkata,
+            checkInTime = serverNow,
+            checkOutTime = null,
+            status = status,
+            notes = notes,
+            durationMinutes = null,
+            recordedBy = currentUser.id,
+            recordedByName = currentUser.fullName,
+            idempotencyKey = idempotencyKey
+        )
+
+        attendanceState.update { it + newRecord }
+        checkInIdempotencyCache[idempotencyKey] = newRecord
+        return Resource.Success(newRecord)
+    }
+
+    override suspend fun recordStudentCheckOut(
+        studentId: String,
+        idempotencyKey: String
+    ): Resource<StudentAttendanceRecord> {
+        val currentUser = authRepository.getCurrentUser()
+        if (currentUser?.role != UserRole.OWNER && currentUser?.role != UserRole.TUTOR) {
+            return Resource.Error("Access Denied: Only tutors or owners can record student checkout.")
+        }
+
+        // Idempotency replay check for checkout
+        checkOutIdempotencyCache[idempotencyKey]?.let { return Resource.Success(it) }
+
+        val studentRes = studentRepository.getStudentById(studentId)
+        val studentName = (studentRes as? Resource.Success)?.data?.fullName ?: studentId
+
+        val todayInKolkata = LocalDate.now(kolkataZone)
+
+        // Find today's open session
+        val openRecord = attendanceState.value.find {
+            it.studentId == studentId && it.attendanceDate == todayInKolkata
+        } ?: return Resource.Error("No check-in record found for student \"$studentName\" today. Student must be checked in first.")
+
+        // Rule: Prevent duplicate check-outs
+        if (openRecord.checkOutTime != null) {
+            return Resource.Error("Invalid Checkout: Student \"$studentName\" has already checked out for today at ${openRecord.checkOutTime}.")
+        }
+
+        // Trusted server timestamp in Asia/Kolkata
+        val serverNow = ZonedDateTime.now(kolkataZone)
+
+        // Rule: Prevent check-out earlier than check-in
+        if (serverNow.isBefore(openRecord.checkInTime)) {
+            return Resource.Error("Invalid Checkout: Checkout time cannot be earlier than check-in time.")
+        }
+
+        val duration = Duration.between(openRecord.checkInTime, serverNow).toMinutes().coerceAtLeast(0)
+
+        val updatedRecord = openRecord.copy(
+            checkOutTime = serverNow,
+            durationMinutes = duration
+        )
+
+        attendanceState.update { list ->
+            list.map { if (it.id == openRecord.id) updatedRecord else it }
+        }
+
+        checkOutIdempotencyCache[idempotencyKey] = updatedRecord
+        return Resource.Success(updatedRecord)
+    }
+
+    override fun getStudentAttendanceForDate(date: LocalDate): Flow<List<StudentAttendanceRecord>> {
+        return attendanceState.map { list ->
+            list.filter { it.attendanceDate == date }
+        }
+    }
+
+    override fun getAttendanceForStudent(studentId: String): Flow<List<StudentAttendanceRecord>> {
+        return attendanceState.map { list ->
+            list.filter { it.studentId == studentId }.sortedByDescending { it.attendanceDate }
+        }
+    }
+
+    override suspend fun getDailySummary(date: LocalDate): Resource<AttendanceDailySummary> {
+        val activeStudents = studentRepository.getActiveStudents().first()
+        val totalActive = activeStudents.size
+
+        val recordsForDate = attendanceState.value.filter { it.attendanceDate == date }
+        val presentCount = recordsForDate.count { it.status == StudentAttendanceStatus.PRESENT }
+        val lateCount = recordsForDate.count { it.status == StudentAttendanceStatus.LATE }
+        val halfDayCount = recordsForDate.count { it.status == StudentAttendanceStatus.HALF_DAY }
+        val absentCount = recordsForDate.count { it.status == StudentAttendanceStatus.ABSENT }
+        val excusedCount = recordsForDate.count { it.status == StudentAttendanceStatus.EXCUSED }
+        val markedCount = presentCount + lateCount + halfDayCount + absentCount + excusedCount
+        val notRecordedCount = (totalActive - markedCount).coerceAtLeast(0)
+
+        val percentage = if (totalActive > 0) {
+            val weightedAttendance = presentCount.toDouble() + lateCount.toDouble() + (halfDayCount.toDouble() * 0.5)
+            ((weightedAttendance / totalActive.toDouble()) * 100.0).let {
+                Math.round(it * 10.0) / 10.0
+            }
+        } else {
+            0.0
+        }
+
+        return Resource.Success(
+            AttendanceDailySummary(
+                date = date,
+                totalActiveStudents = totalActive,
+                presentCount = presentCount,
+                lateCount = lateCount,
+                halfDayCount = halfDayCount,
+                absentCount = absentCount,
+                excusedCount = excusedCount,
+                notRecordedCount = notRecordedCount,
+                attendancePercentage = percentage
+            )
+        )
+    }
+
+    override suspend fun getMonthlySummary(year: Int, month: Int): Resource<AttendanceMonthlySummary> {
+        val monthlyRecords = attendanceState.value.filter {
+            it.attendanceDate.year == year && it.attendanceDate.monthValue == month
+        }
+        val totalSessions = monthlyRecords.size
+        val presentCount = monthlyRecords.count { it.status == StudentAttendanceStatus.PRESENT }
+        val lateCount = monthlyRecords.count { it.status == StudentAttendanceStatus.LATE }
+        val halfDayCount = monthlyRecords.count { it.status == StudentAttendanceStatus.HALF_DAY }
+        val absentCount = monthlyRecords.count { it.status == StudentAttendanceStatus.ABSENT }
+        val excusedCount = monthlyRecords.count { it.status == StudentAttendanceStatus.EXCUSED }
+
+        val averagePercentage = if (totalSessions > 0) {
+            val weighted = presentCount.toDouble() + lateCount.toDouble() + (halfDayCount.toDouble() * 0.5)
+            ((weighted / totalSessions.toDouble()) * 100.0).let {
+                Math.round(it * 10.0) / 10.0
+            }
+        } else {
+            0.0
+        }
+
+        return Resource.Success(
+            AttendanceMonthlySummary(
+                year = year,
+                month = month,
+                totalSessions = totalSessions,
+                presentCount = presentCount,
+                lateCount = lateCount,
+                halfDayCount = halfDayCount,
+                absentCount = absentCount,
+                excusedCount = excusedCount,
+                averageAttendancePercentage = averagePercentage
+            )
+        )
+    }
+
+    override suspend fun ownerCorrectStudentAttendance(
+        attendanceId: String,
+        newCheckIn: ZonedDateTime,
+        newCheckOut: ZonedDateTime?,
+        newStatus: StudentAttendanceStatus,
+        notes: String?,
+        reason: String
+    ): Resource<StudentAttendanceRecord> {
+        val currentUser = authRepository.getCurrentUser()
+        if (currentUser?.role != UserRole.OWNER) {
+            return Resource.Error("Access Denied: Only the centre owner can correct student attendance.")
+        }
+
+        if (reason.isBlank() || reason.trim().length < 5) {
+            return Resource.Error("Correction reason is required for audit trail (min 5 characters).")
+        }
+
+        if (newCheckOut != null && newCheckOut.isBefore(newCheckIn)) {
+            return Resource.Error("Invalid Times: Departure time cannot be earlier than arrival time.")
+        }
+
+        val target = attendanceState.value.find { it.id == attendanceId }
+            ?: return Resource.Error("Attendance record not found.")
+
+        val duration = newCheckOut?.let {
+            Duration.between(newCheckIn, it).toMinutes().coerceAtLeast(0)
+        }
+
+        val corrected = target.copy(
+            checkInTime = newCheckIn,
+            checkOutTime = newCheckOut,
+            status = newStatus,
+            notes = notes,
+            durationMinutes = duration,
+            correctedBy = currentUser.id,
+            correctedByName = currentUser.fullName,
+            correctionReason = reason.trim(),
+            correctedAt = ZonedDateTime.now(kolkataZone)
+        )
+
+        attendanceState.update { list ->
+            list.map { if (it.id == attendanceId) corrected else it }
+        }
+
+        return Resource.Success(corrected)
+    }
+
+    override suspend fun recordTutorCheckIn(
+        lat: Double,
+        lng: Double,
+        accuracy: Float,
+        readingTimestampMillis: Long?,
+        isMock: Boolean
+    ): Resource<TutorAttendanceRecord> {
+        val currentUser = authRepository.getCurrentUser()
+        if (currentUser?.role != UserRole.TUTOR && currentUser?.role != UserRole.OWNER) {
+            return Resource.Error("Access Denied: Only teachers or owners can clock in.")
+        }
+
+        val today = LocalDate.now(kolkataZone)
+        val serverNow = ZonedDateTime.now(kolkataZone)
+
+        // Prevent duplicate open sessions
+        val activeSession = tutorAttendanceState.value.find {
+            it.tutorId == currentUser.id && it.checkOutTime == null && it.verificationStatus != GpsVerificationStatus.REJECTED
+        }
+        if (activeSession != null) {
+            return Resource.Error("Duplicate Open Session: You have an existing active clock-in session (${activeSession.id}). Clock out first.")
+        }
+
+        // Check if completed attendance already exists for today
+        val completedToday = tutorAttendanceState.value.find {
+            it.tutorId == currentUser.id && it.attendanceDate == today && it.checkOutTime != null && it.verificationStatus == GpsVerificationStatus.VERIFIED
+        }
+        if (completedToday != null) {
+            return Resource.Error("Attendance for today ($today) has already been completed.")
+        }
+
+        var status = GpsVerificationStatus.VERIFIED
+        var rejectionReason: String? = null
+
+        // 1. Anti-Spoofing & Staleness Verification
+        if (isMock) {
+            status = GpsVerificationStatus.REJECTED
+            rejectionReason = "Mock location provider detected by client system."
+        } else if (readingTimestampMillis != null) {
+            val ageSeconds = (System.currentTimeMillis() - readingTimestampMillis) / 1000L
+            if (ageSeconds > maxLocationAgeSeconds) {
+                status = GpsVerificationStatus.REJECTED
+                rejectionReason = "Location reading is stale (${ageSeconds}s old > max permitted ${maxLocationAgeSeconds}s)."
+            }
+        }
+
+        // 2. Accuracy & Geofence Distance Calculation
+        val distance = HaversineUtil.calculateDistanceMeters(lat, lng, centreLatitude, centreLongitude)
+        val roundedDistance = Math.round(distance * 10.0) / 10.0
+
+        if (status == GpsVerificationStatus.VERIFIED) {
+            if (accuracy > maxAccuracyMeters) {
+                status = GpsVerificationStatus.REJECTED
+                rejectionReason = "GPS accuracy insufficient (${accuracy}m > allowed ${maxAccuracyMeters}m)."
+            } else if (distance > permittedRadiusMeters) {
+                status = GpsVerificationStatus.REJECTED
+                rejectionReason = "Location outside centre geofence (${roundedDistance}m away, max permitted ${permittedRadiusMeters}m)."
+            }
+        }
+
+        val record = TutorAttendanceRecord(
+            id = UUID.randomUUID().toString(),
+            tutorId = currentUser.id,
+            tutorName = currentUser.fullName,
+            attendanceDate = today,
+            checkInTime = serverNow,
+            checkInLat = lat,
+            checkInLng = lng,
+            checkInDistanceMeters = roundedDistance,
+            checkInAccuracyMeters = accuracy.toDouble(),
+            verificationStatus = status,
+            rejectionReason = rejectionReason
+        )
+
+        tutorAttendanceState.update { it + record }
+
+        return if (status == GpsVerificationStatus.VERIFIED) {
+            Resource.Success(record)
+        } else {
+            Resource.Error(rejectionReason ?: "GPS verification failed.")
+        }
+    }
+
+    override suspend fun recordTutorCheckOut(
+        lat: Double,
+        lng: Double,
+        accuracy: Float,
+        readingTimestampMillis: Long?,
+        isMock: Boolean
+    ): Resource<TutorAttendanceRecord> {
+        val currentUser = authRepository.getCurrentUser()
+        if (currentUser?.role != UserRole.TUTOR && currentUser?.role != UserRole.OWNER) {
+            return Resource.Error("Access Denied: Only teachers or owners can clock out.")
+        }
+
+        // Fetch active open session
+        val activeSession = tutorAttendanceState.value.find {
+            it.tutorId == currentUser.id && it.checkOutTime == null && it.verificationStatus != GpsVerificationStatus.REJECTED
+        } ?: return Resource.Error("No open attendance session found to clock out from.")
+
+        val serverNow = ZonedDateTime.now(kolkataZone)
+        var status = GpsVerificationStatus.VERIFIED
+        var rejectionReason: String? = null
+
+        // Staleness & Mock Check
+        if (isMock) {
+            status = GpsVerificationStatus.REJECTED
+            rejectionReason = "Mock location provider detected during check-out."
+        } else if (readingTimestampMillis != null) {
+            val ageSeconds = (System.currentTimeMillis() - readingTimestampMillis) / 1000L
+            if (ageSeconds > maxLocationAgeSeconds) {
+                status = GpsVerificationStatus.REJECTED
+                rejectionReason = "Location reading is stale (${ageSeconds}s > max ${maxLocationAgeSeconds}s)."
+            }
+        }
+
+        val distance = HaversineUtil.calculateDistanceMeters(lat, lng, centreLatitude, centreLongitude)
+        val roundedDistance = Math.round(distance * 10.0) / 10.0
+
+        if (status == GpsVerificationStatus.VERIFIED) {
+            if (accuracy > maxAccuracyMeters) {
+                status = GpsVerificationStatus.REJECTED
+                rejectionReason = "GPS accuracy insufficient (${accuracy}m > allowed ${maxAccuracyMeters}m)."
+            } else if (distance > permittedRadiusMeters) {
+                status = GpsVerificationStatus.REJECTED
+                rejectionReason = "Location outside centre geofence (${roundedDistance}m away, max permitted ${permittedRadiusMeters}m)."
+            }
+        }
+
+        val duration = Duration.between(activeSession.checkInTime, serverNow).toMinutes().coerceAtLeast(0)
+
+        val updatedRecord = activeSession.copy(
+            checkOutTime = serverNow,
+            checkOutLat = lat,
+            checkOutLng = lng,
+            checkOutAccuracyMeters = accuracy.toDouble(),
+            checkOutDistanceMeters = roundedDistance,
+            checkOutVerificationStatus = status,
+            checkOutRejectionReason = rejectionReason,
+            durationMinutes = duration
+        )
+
+        tutorAttendanceState.update { list ->
+            list.map { if (it.id == activeSession.id) updatedRecord else it }
+        }
+
+        return if (status == GpsVerificationStatus.VERIFIED) {
+            Resource.Success(updatedRecord)
+        } else {
+            Resource.Error(rejectionReason ?: "GPS verification failed on check-out.")
+        }
+    }
+
+    override suspend fun getActiveTutorSession(tutorId: String): Resource<TutorAttendanceRecord?> {
+        val session = tutorAttendanceState.value.find {
+            it.tutorId == tutorId && it.checkOutTime == null && it.verificationStatus == GpsVerificationStatus.VERIFIED
+        }
+        return Resource.Success(session)
+    }
+
+    override suspend fun getTutorMonthlySummary(
+        tutorId: String,
+        year: Int,
+        month: Int
+    ): Resource<TutorMonthlySummary> {
+        val monthlyRecords = tutorAttendanceState.value.filter {
+            it.tutorId == tutorId &&
+                    it.attendanceDate.year == year &&
+                    it.attendanceDate.monthValue == month
+        }
+
+        val verified = monthlyRecords.count { it.verificationStatus == GpsVerificationStatus.VERIFIED }
+        val rejected = monthlyRecords.count { it.verificationStatus == GpsVerificationStatus.REJECTED }
+        val overridden = monthlyRecords.count { it.verificationStatus == GpsVerificationStatus.OVERRIDDEN }
+
+        val totalMinutes = monthlyRecords.filter { it.verificationStatus != GpsVerificationStatus.REJECTED }
+            .sumOf { it.durationMinutes ?: 0L }
+        val totalHours = Math.round((totalMinutes.toDouble() / 60.0) * 10.0) / 10.0
+
+        val distinctDays = monthlyRecords
+            .filter { it.verificationStatus != GpsVerificationStatus.REJECTED }
+            .map { it.attendanceDate }
+            .distinct()
+            .size
+
+        return Resource.Success(
+            TutorMonthlySummary(
+                tutorId = tutorId,
+                year = year,
+                month = month,
+                totalDaysWorked = distinctDays,
+                totalHoursWorked = totalHours,
+                verifiedSessionsCount = verified,
+                rejectedSessionsCount = rejected,
+                overriddenSessionsCount = overridden
+            )
+        )
+    }
+
+    override fun getTutorAttendanceForMonth(tutorId: String, year: Int, month: Int): Flow<List<TutorAttendanceRecord>> {
+        return tutorAttendanceState.map { list ->
+            list.filter {
+                it.tutorId == tutorId &&
+                        it.attendanceDate.year == year &&
+                        it.attendanceDate.monthValue == month
+            }.sortedByDescending { it.checkInTime }
+        }
+    }
+
+    override fun getAllTutorAttendanceForDate(date: LocalDate): Flow<List<TutorAttendanceRecord>> {
+        return tutorAttendanceState.map { list ->
+            list.filter { it.attendanceDate == date }.sortedByDescending { it.checkInTime }
+        }
+    }
+
+    override suspend fun ownerOverrideTutorAttendance(
+        attendanceId: String,
+        overrideStatus: GpsVerificationStatus,
+        newCheckIn: ZonedDateTime?,
+        newCheckOut: ZonedDateTime?,
+        reason: String
+    ): Resource<TutorAttendanceRecord> {
+        val currentUser = authRepository.getCurrentUser()
+        if (currentUser?.role != UserRole.OWNER) {
+            return Resource.Error("Access Denied: Only the centre owner can override teacher attendance.")
+        }
+
+        if (reason.isBlank() || reason.trim().length < 5) {
+            return Resource.Error("Override reason is required for audit trail (min 5 characters).")
+        }
+
+        val target = tutorAttendanceState.value.find { it.id == attendanceId }
+            ?: return Resource.Error("Teacher attendance record not found.")
+
+        val checkIn = newCheckIn ?: target.checkInTime
+        val checkOut = newCheckOut ?: target.checkOutTime
+        val duration = if (checkOut != null) {
+            Duration.between(checkIn, checkOut).toMinutes().coerceAtLeast(0)
+        } else {
+            target.durationMinutes
+        }
+
+        val updated = target.copy(
+            isManualOverride = true,
+            overrideBy = currentUser.id,
+            overrideByName = currentUser.fullName,
+            overrideReason = reason.trim(),
+            overrideAt = ZonedDateTime.now(kolkataZone),
+            verificationStatus = overrideStatus,
+            checkInTime = checkIn,
+            checkOutTime = checkOut,
+            durationMinutes = duration
+        )
+
+        tutorAttendanceState.update { list ->
+            list.map { if (it.id == attendanceId) updated else it }
+        }
+
+        return Resource.Success(updated)
+    }
 }
 
 internal class FakeWorkReportRepository : WorkReportRepository {

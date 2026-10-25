@@ -85,4 +85,28 @@ object InputValidator {
         }
         return ValidationResult.Valid
     }
+
+    fun validateCorrectionReason(reason: String?): ValidationResult {
+        if (reason.isNullOrBlank()) {
+            return ValidationResult.Invalid("Correction reason is required for audit trail.")
+        }
+        if (reason.trim().length < 5) {
+            return ValidationResult.Invalid("Please provide a valid explanation for this correction (min 5 characters).")
+        }
+        return ValidationResult.Valid
+    }
+
+    fun validateAttendanceTimes(checkIn: java.time.ZonedDateTime, checkOut: java.time.ZonedDateTime?): ValidationResult {
+        if (checkOut != null && checkOut.isBefore(checkIn)) {
+            return ValidationResult.Invalid("Departure time cannot be earlier than arrival time.")
+        }
+        return ValidationResult.Valid
+    }
+
+    fun validateAttendanceDate(date: java.time.LocalDate, referenceDate: java.time.LocalDate = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"))): ValidationResult {
+        if (date.isAfter(referenceDate)) {
+            return ValidationResult.Invalid("Cannot mark or view attendance for future dates.")
+        }
+        return ValidationResult.Valid
+    }
 }

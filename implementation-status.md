@@ -13,8 +13,8 @@ Current Status: Authentication, Account Provisioning & Student Management Comple
 | **Phase 2** | Supabase Backend, Migrations & RLS | ✅ **Completed** | 11 core tables, versioned SQL DDL, zero-trust RLS policies, atomic attendance RPCs, Haversine GPS validation, seed data, SECURITY_TEST_PLAN.md | **Security Suite:** 10/10 security & isolation tests passed. |
 | **Phase 3** | Authentication & Account Provisioning | ✅ **Completed** | Login screen, Session restoration, Password reset, Token-based invitation flow, Role-based dashboard routing, Account deactivation RPC | **7/7 unit tests passed:** Session expiry, role guard, invitation validation, deactivation revocation. |
 | **Phase 4** | Student Directory & Management | ✅ **Completed** | Search & Grade filters, Add/Edit with validation, Duplicate creation prevention, Soft-delete / Archive & Restore with audit log, History inspection, Restricted permanent deletion | **8/8 unit tests passed:** Archival exclusion, restoration, history preservation, permanent deletion confirmation guard. |
-| **Phase 5** | Attendance & Server-Side GPS Validation | ⚪ Next Phase | Student check-in/out register, Tutor Fused Location clock-in, Haversine server validation RPC, Owner overrides & audit logging | Haversine distance tests, GPS spoof rejection tests |
-| **Phase 6** | Daily Work Reports & Parent Portal | ⚪ Pending | Report authoring, Edit history audit trail, Parent multi-child view, Offline caching & idempotency | Multi-child isolation test, idempotency deduplication |
+| **Phase 5** | Attendance & Server-Side GPS Validation | ✅ **Completed** | Student check-in/out register, Asia/Kolkata server time, Tutor Fused Location clock-in, Haversine server validation, anti-staleness & mock rejection, monthly summaries, Owner audited overrides | **30/30 unit tests passed:** 15 student attendance + 15 teacher GPS attendance tests. Total suite: **65/65 tests passed**. |
+| **Phase 6** | Daily Work Reports & Parent Portal | ⚪ Next Phase | Report authoring, Edit history audit trail, Parent multi-child view, Offline caching & idempotency | Multi-child isolation test, idempotency deduplication |
 | **Phase 7** | Notifications & Push Dispatch | ⚪ Pending | In-app notification center, Firebase Cloud Messaging (FCM) service, Lock screen privacy preservation | Push notification payload tests |
 | **Phase 8** | End-to-End QA, Automated Tests & Release | ⚪ Pending | End-to-end integration tests, signed release build, security audit | Full automated regression test suite |
 
@@ -88,5 +88,33 @@ Documentation: [`SECURITY_TEST_PLAN.md`](file:///C:/Users/Nikitha%20kotha/.gemin
   - Restricted owner-only workflow requiring exact confirmation phrase `"PERMANENTLY DELETE STUDENT"` and audit justification.
 - [x] **Automated Tests**:
   - `StudentManagementTest.kt`: 8/8 passed.
-  - Total Android Unit Tests: 35/35 passed (0 failures).
+
+---
+
+## 📍 Phase 5: Student & Teacher Attendance Verification
+
+### 1. Student Attendance Register
+- [x] **Authoritative Server Timestamps**: Interpreted strictly in `Asia/Kolkata` (IST, UTC+05:30).
+- [x] **Statuses Supported**: `PRESENT`, `LATE`, `HALF_DAY`, `ABSENT`, `EXCUSED`.
+- [x] **Duplicate Prevention**: Rejects duplicate student check-ins for the same date.
+- [x] **Sequence & Duration Integrity**: Prevents checkout without an open session and prevents checkout time earlier than arrival time.
+- [x] **Archival Isolation**: Archived students cannot receive new attendance records; historical attendance is fully retained.
+- [x] **Owner Correction Audit Trail**: Owner corrections require mandatory audit reason (min 5 chars), recording actor ID, name, and timestamp.
+- [x] **Automated Tests**: `StudentAttendanceTest.kt`: 15/15 passed.
+
+### 2. Teacher Attendance with Server-Side GPS Verification
+- [x] **On-Demand Foreground Permissions**: Requests `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` strictly upon Clock In / Out action with transparent user explanation.
+- [x] **Zero Background Tracking**: No background location permissions or services.
+- [x] **Server-Side Trust Model**: Haversine distance calculated against centre coordinates (17.385044, 78.486671, radius 150m); client booleans never trusted.
+- [x] **Accuracy & Staleness Protection**: Rejects readings with accuracy > 60m or age > 120s.
+- [x] **Anti-Spoofing & Mock Detection**: Rejects mock location providers; notes GPS evidence limitations against hardware/root spoofing.
+- [x] **Single Open Session Constraint**: Rejects duplicate clock-ins while an open session is active.
+- [x] **Duration & Summaries**: Computes shift duration, days worked, total hours, verified, rejected, and overridden counts.
+- [x] **Audited Owner Overrides**: Owner can review exceptions (out of bounds, accuracy) and approve overrides with mandatory audit justification.
+- [x] **Automated Tests**: `TutorAttendanceTest.kt`: 15/15 passed.
+
+**Total Android Unit Test Suite: 65 / 65 passed (0 failures).**
+**Debug APK Build: `assembleDebug` SUCCESSFUL.**
+**Lint Status: `lintDebug` 0 errors.**
+
 

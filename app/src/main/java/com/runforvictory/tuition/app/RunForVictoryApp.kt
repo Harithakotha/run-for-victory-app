@@ -11,7 +11,7 @@ class RunForVictoryApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = DefaultAppContainer()
+        container = DefaultAppContainer(this)
         NotificationChannelManager.setupNotificationChannels(this)
     }
 }
