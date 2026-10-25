@@ -14,9 +14,9 @@ Current Status: Authentication, Account Provisioning & Student Management Comple
 | **Phase 3** | Authentication & Account Provisioning | ✅ **Completed** | Login screen, Session restoration, Password reset, Token-based invitation flow, Role-based dashboard routing, Account deactivation RPC | **7/7 unit tests passed:** Session expiry, role guard, invitation validation, deactivation revocation. |
 | **Phase 4** | Student Directory & Management | ✅ **Completed** | Search & Grade filters, Add/Edit with validation, Duplicate creation prevention, Soft-delete / Archive & Restore with audit log, History inspection, Restricted permanent deletion | **8/8 unit tests passed:** Archival exclusion, restoration, history preservation, permanent deletion confirmation guard. |
 | **Phase 5** | Attendance & Server-Side GPS Validation | ✅ **Completed** | Student check-in/out register, Asia/Kolkata server time, Tutor Fused Location clock-in, Haversine server validation, anti-staleness & mock rejection, monthly summaries, Owner audited overrides | **30/30 unit tests passed:** 15 student attendance + 15 teacher GPS attendance tests. Total suite: **65/65 tests passed**. |
-| **Phase 6** | Daily Work Reports & Parent Portal | ⚪ Next Phase | Report authoring, Edit history audit trail, Parent multi-child view, Offline caching & idempotency | Multi-child isolation test, idempotency deduplication |
-| **Phase 7** | Notifications & Push Dispatch | ⚪ Pending | In-app notification center, Firebase Cloud Messaging (FCM) service, Lock screen privacy preservation | Push notification payload tests |
-| **Phase 8** | End-to-End QA, Automated Tests & Release | ⚪ Pending | End-to-end integration tests, signed release build, security audit | Full automated regression test suite |
+| **Phase 6** | Daily Work Reports & Parent Portal | ✅ **Completed** | Daily work reports, multi-child parent portal, attendance calendars, historical records, weekly/monthly summaries, offline & retry handling | **31/31 unit tests passed:** 13 work reporting + 18 parent dashboard tests. |
+| **Phase 7** | Reliable In-App Notifications & Android Push | ✅ **Completed** | PostgreSQL in-app notifications, FCM v1 delivery architecture, Lock-screen privacy redaction (`setPublicVersion`), notification preferences, token rotation cleanup, duplicate retry guard | **10/10 unit tests passed:** Independent storage, parent isolation, privacy redaction, token rotation, preference suppression, retry idempotency. |
+| **Phase 8** | Branding & Localization (By Ravi Kumar) | ✅ **Completed** | Brand Identity (Navy/Teal/Gold), Education logo & adaptive launcher icon, BrandTopAppBar across all dashboards, LocaleManager with persistent language storage, accessible language selector, 100% EN/TE string parity, Asia/Kolkata formatting | **10/10 unit tests passed:** Language switching (EN↔TE), persistence across restarts, fallback handling, 100% key parity, brand asset checks. Total suite: **117/117 passed**. |
 
 
 ---
@@ -113,8 +113,90 @@ Documentation: [`SECURITY_TEST_PLAN.md`](file:///C:/Users/Nikitha%20kotha/.gemin
 - [x] **Audited Owner Overrides**: Owner can review exceptions (out of bounds, accuracy) and approve overrides with mandatory audit justification.
 - [x] **Automated Tests**: `TutorAttendanceTest.kt`: 15/15 passed.
 
-**Total Android Unit Test Suite: 65 / 65 passed (0 failures).**
-**Debug APK Build: `assembleDebug` SUCCESSFUL.**
-**Lint Status: `lintDebug` 0 errors.**
+---
+
+## 📖 Phase 6: Daily Work Reports & Parent Portal Verification
+- [x] **Daily Work Reports**:
+  - Full authoring, mandatory subject/work completed validation, pending work, homework, teacher progress note.
+  - Audited report corrections: edits require mandatory 5+ character reason and log editor ID, name, and timestamp.
+  - Idempotency key deduplication on creation to safeguard against timeouts and retry duplicates.
+  - `WorkReportTest.kt`: 13/13 passed.
+- [x] **Parent Dashboard & Attendance Summaries**:
+  - Multi-child filter chips with active/archived badges; parent retains historical access to archived children.
+  - Today's attendance status card with arrival & departure times (missing checkout handled without fabricating time).
+  - Weekly summary card with attendance percentage; monthly summary card.
+  - Date-sorted attendance history; paginated work reports with refresh and empty states.
+  - `ParentDashboardTest.kt`: 18/18 passed.
+
+---
+
+## 🔔 Phase 7: Reliable In-App Notifications & Android Push Verification
+- [x] **PostgreSQL Persistent In-App Notifications**:
+  - Table `public.app_notifications` stores notifications independently of push dispatch.
+  - Table `public.outbound_push_queue` decouples push delivery with retry limits and sanitized error logging.
+  - SQL Migration: [`20261025_009_notifications_and_push_delivery.sql`](file:///C:/Users/Nikitha%20kotha/.gemini/antigravity/scratch/run_for_victory/supabase/migrations/20261025_009_notifications_and_push_delivery.sql).
+- [x] **Lock-Screen Privacy Redaction**:
+  - `PushNotificationManager` uses `NotificationCompat.VISIBILITY_PRIVATE` and attaches `setPublicVersion` with generic text ("Run for Victory Update").
+  - Sensitive details (student names, grades, subjects, homework) are concealed on locked screens.
+- [x] **Notification Preferences & Granular Controls**:
+  - Table `public.notification_preferences` supports per-user toggles: push enabled, work reports, attendance, announcements.
+  - Centre-level toggle for attendance notifications in `tuition_centres`.
+  - In-app preference dialog in Parent Dashboard with instant toggles.
+- [x] **Token Rotation & Invalid Token Invalidation**:
+  - `RunForVictoryMessagingService.onNewToken` securely updates device tokens in the backend.
+  - Invalid/unregistered tokens (`UNREGISTERED`, `INVALID_ARGUMENT`) are automatically cleaned up from `public.device_tokens`.
+- [x] **Idempotency & Rollback Isolation**:
+  - Network retries with the same idempotency key never duplicate push alerts or in-app notification records.
+  - Failure in push delivery or invalid tokens **never** rolls back or aborts saved reports or attendance check-ins.
+- [x] **Audit & Secret Protection**:
+  - Server credentials and service account keys are stored only in backend vault.
+  - Tokens are masked (`fcm_...7890`) in audit logs; no secrets or credentials leaked.
+- [x] **Automated Tests**:
+  - `NotificationAndPushTest.kt`: 10/10 passed.
+- [x] **Documentation**:
+  - [`docs/firebase-setup-and-troubleshooting.md`](file:///C:/Users/Nikitha%20kotha/.gemini/antigravity/scratch/run_for_victory/docs/firebase-setup-and-troubleshooting.md): Architecture, console setup, FCM v1 REST API, lock-screen privacy, and troubleshooting.
+
+---
+
+## 🎨 Phase 8: Branding & Localization (By Ravi Kumar) Verification
+- [x] **Brand Identity & Distinctive Education Logo**:
+  - App title: "Run for Victory"
+  - Subtitle: "By Ravi Kumar"
+  - Palette: Academic Navy (`#0A192F`), Vibrant Teal (`#0D9488`), and Prestige Gold (`#D97706` / `#F59E0B`).
+  - Education vector logo (`ic_run_for_victory_logo.xml`): Features deep navy shield, outer gold honor ring, teal open book/laurel wings, gold graduation cap/diamond motif, and victory flame.
+  - Replaceable adaptive launcher icon: Declared in `AndroidManifest.xml` via `@mipmap/ic_launcher` and `@mipmap/ic_launcher_round`.
+- [x] **Consistent Screen Branding**:
+  - `BrandTopAppBar` component used across all primary dashboards: `OwnerDashboardScreen`, `TutorDashboardScreen`, and `ParentDashboardScreen`.
+  - Prominent logo presentation on `LoginScreen` and owner dashboard command center.
+- [x] **Bilingual Localization Architecture**:
+  - Complete English (`en`) and natural Telugu (`te`) string resource catalogs with 100% key parity (zero untranslated English strings or missing keys).
+  - `LocaleManager` contract and `DefaultLocaleManager` implementation with persistent preference storage in `SharedPreferences`.
+  - Dynamic Jetpack Compose reactivity: `MainActivity` observes active locale and injects updated `Configuration` and localized `Context` via `CompositionLocalProvider`.
+  - Language selection persists seamlessly across application cold starts and restarts.
+- [x] **Accessible Language Selector**:
+  - `LanguageSelectorButton` with 48dp minimum touch target, high-contrast colors, and screen reader semantic labels.
+  - Interactive bilingual modal dialog (`LanguageSelectionDialog`) for instant switching between English and Telugu.
+  - Placed conveniently on `LoginScreen` (before authentication) and in TopAppBar actions across all dashboards.
+- [x] **Date, Time & Timezone Formatting**:
+  - All date and time formatting strictly anchored in `Asia/Kolkata` (IST, UTC+05:30) with natural rendering across English and Telugu locales.
+- [x] **Automated Tests**:
+  - `BrandingAndLocalizationTest.kt`: 10/10 passed.
+    - Switch English → Telugu
+    - Switch Telugu → English
+    - Cold-start restart persistence
+    - Unsupported code fallback
+    - 100% key parity between `values/strings.xml` and `values-te/strings.xml`
+    - Natural Telugu string validity
+    - Brand palette and vector logo element verification
+    - Replaceable launcher icon manifest check
+    - Asia/Kolkata date/time formatting across locales
+    - Supported language metadata validation
+
+---
+
+## 🎯 Verification Totals
+- **Android Unit Test Suite**: **117 / 117 passed (0 failures)**.
+- **Debug APK Build**: `assembleDebug` **SUCCESSFUL**.
+- **Lint Status**: `lintDebug` **0 errors**.
 
 

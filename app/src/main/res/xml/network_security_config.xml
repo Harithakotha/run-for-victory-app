@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network Security Configuration
+    Project: Run for Victory (By Ravi Kumar)
+    Enforces strict TLS, blocks cleartext HTTP, and validates certificates.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">supabase.co</domain>
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">firebaseio.com</domain>
+        <pin-set>
+            <!-- Standard certificate pinning or system trust -->
+        </pin-set>
+    </domain-config>
+</network-security-config>

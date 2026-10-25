@@ -71,6 +71,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.runforvictory.tuition.R
+import com.runforvictory.tuition.core.components.BrandTopAppBar
+import com.runforvictory.tuition.core.localization.LocaleManager
 import com.runforvictory.tuition.core.theme.BrandGoldPrimary
 import com.runforvictory.tuition.core.theme.BrandNavyPrimary
 import com.runforvictory.tuition.core.theme.BrandTealPrimary
@@ -87,8 +89,10 @@ import java.time.format.DateTimeFormatter
 fun TutorDashboardScreen(
     viewModel: TutorAttendanceViewModel,
     onNavigateToAttendance: () -> Unit = {},
+    onNavigateToReports: () -> Unit = {},
     onSignOut: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    localeManager: LocaleManager? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -132,21 +136,10 @@ fun TutorDashboardScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = stringResource(id = R.string.app_name),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = stringResource(id = R.string.role_tutor) + " - " + uiState.tutorName.ifBlank { stringResource(id = R.string.app_subtitle) },
-                            style = MaterialTheme.typography.labelMedium,
-                            color = BrandGoldPrimary
-                        )
-                    }
-                },
+            BrandTopAppBar(
+                title = stringResource(id = R.string.app_name),
+                subtitle = stringResource(id = R.string.role_tutor) + " • " + uiState.tutorName.ifBlank { stringResource(id = R.string.app_subtitle) },
+                localeManager = localeManager,
                 actions = {
                     IconButton(onClick = onSignOut) {
                         Icon(
@@ -154,12 +147,7 @@ fun TutorDashboardScreen(
                             contentDescription = stringResource(id = R.string.action_logout)
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BrandNavyPrimary,
-                    titleContentColor = MaterialTheme.colorScheme.surface,
-                    actionIconContentColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -196,7 +184,7 @@ fun TutorDashboardScreen(
                 // 3. Quick Action Navigation (Student Attendance & Work Reports)
                 item {
                     Text(
-                        text = "Quick Actions",
+                        text = stringResource(id = R.string.tutor_quick_actions),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = BrandNavyPrimary
@@ -230,7 +218,7 @@ fun TutorDashboardScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Mark student check-in, check-out and view daily register",
+                                    text = stringResource(id = R.string.tutor_action_mark_attendance_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -241,7 +229,9 @@ fun TutorDashboardScreen(
 
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onNavigateToReports),
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
@@ -264,7 +254,7 @@ fun TutorDashboardScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Create daily work & homework report for students",
+                                    text = stringResource(id = R.string.tutor_action_work_report_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -287,7 +277,7 @@ fun TutorDashboardScreen(
                             color = BrandNavyPrimary
                         )
                         Text(
-                            text = "${uiState.monthlyRecords.size} sessions",
+                            text = stringResource(id = R.string.tutor_sessions_count, uiState.monthlyRecords.size),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -508,7 +498,7 @@ private fun TutorShiftCard(
                 ) {
                     Column {
                         Text(
-                            text = "Check-in: ${activeSession.checkInTime.format(timeFormatter)}",
+                            text = stringResource(id = R.string.tutor_check_in_at, activeSession.checkInTime.format(timeFormatter)),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = BrandNavyPrimary
@@ -549,7 +539,7 @@ private fun TutorShiftCard(
                 }
             } else {
                 Text(
-                    text = "Requires verified physical proximity within 150m of the centre.",
+                    text = stringResource(id = R.string.tutor_proximity_required),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -75,25 +75,30 @@ class TutorAttendanceViewModel(
                 )
             }
 
-            refreshSessionAndHistory(tutorId, today.year, today.monthValue)
-            _uiState.update { it.copy(isLoading = false) }
-        }
-    }
+            val activeRes = attendanceRepository.getActiveTutorSession(tutorId)
+            val active = if (activeRes is Resource.Success) activeRes.data else null
 
-    private suspend fun refreshSessionAndHistory(tutorId: String, year: Int, month: Int) {
-        val activeRes = attendanceRepository.getActiveTutorSession(tutorId)
-        val active = if (activeRes is Resource.Success) activeRes.data else null
+            val summaryRes = attendanceRepository.getTutorMonthlySummary(tutorId, today.year, today.monthValue)
+            val summary = if (summaryRes is Resource.Success) summaryRes.data else null
 
-        val summaryRes = attendanceRepository.getTutorMonthlySummary(tutorId, year, month)
-        val summary = if (summaryRes is Resource.Success) summaryRes.data else null
-
-        attendanceRepository.getTutorAttendanceForMonth(tutorId, year, month).collect { records ->
             _uiState.update {
                 it.copy(
                     activeSession = active,
                     monthlySummary = summary,
-                    monthlyRecords = records
+                    isLoading = false
                 )
+            }
+
+            observeMonthlyRecords(tutorId, today.year, today.monthValue)
+        }
+    }
+
+    private fun observeMonthlyRecords(tutorId: String, year: Int, month: Int) {
+        viewModelScope.launch {
+            attendanceRepository.getTutorAttendanceForMonth(tutorId, year, month).collect { records ->
+                _uiState.update {
+                    it.copy(monthlyRecords = records)
+                }
             }
         }
     }

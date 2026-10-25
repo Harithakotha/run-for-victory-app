@@ -17,6 +17,9 @@ import com.runforvictory.tuition.features.owner.OwnerDashboardScreen
 import com.runforvictory.tuition.features.owner.StudentManagementScreen
 import com.runforvictory.tuition.features.owner.StudentManagementViewModel
 import com.runforvictory.tuition.features.parent.ParentDashboardScreen
+import com.runforvictory.tuition.features.parent.ParentDashboardViewModel
+import com.runforvictory.tuition.features.reports.WorkReportScreen
+import com.runforvictory.tuition.features.reports.WorkReportViewModel
 import com.runforvictory.tuition.features.tutor.TutorDashboardScreen
 
 @Composable
@@ -34,6 +37,7 @@ fun AppNavHost(
         composable(Screen.Login.route) {
             LoginScreen(
                 viewModel = authViewModel,
+                localeManager = appContainer.localeManager,
                 onLoginSuccess = { role ->
                     val destination = when (role) {
                         UserRole.OWNER -> Screen.OwnerDashboard.route
@@ -50,11 +54,15 @@ fun AppNavHost(
         composable(Screen.OwnerDashboard.route) {
             OwnerDashboardScreen(
                 attendanceRepository = appContainer.attendanceRepository,
+                localeManager = appContainer.localeManager,
                 onNavigateToStudents = {
                     navController.navigate(Screen.StudentManagement.route)
                 },
                 onNavigateToAttendance = {
                     navController.navigate(Screen.StudentAttendance.route)
+                },
+                onNavigateToReports = {
+                    navController.navigate(Screen.WorkReports.route)
                 },
                 onSignOut = {
                     authViewModel.signOut()
@@ -118,8 +126,12 @@ fun AppNavHost(
             )
             TutorDashboardScreen(
                 viewModel = tutorVm,
+                localeManager = appContainer.localeManager,
                 onNavigateToAttendance = {
                     navController.navigate(Screen.StudentAttendance.route)
+                },
+                onNavigateToReports = {
+                    navController.navigate(Screen.WorkReports.route)
                 },
                 onSignOut = {
                     authViewModel.signOut()
@@ -130,8 +142,45 @@ fun AppNavHost(
             )
         }
 
+        composable(Screen.WorkReports.route) {
+            val workReportVm: WorkReportViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return WorkReportViewModel(
+                            workReportRepository = appContainer.workReportRepository,
+                            studentRepository = appContainer.studentRepository,
+                            authRepository = appContainer.authRepository
+                        ) as T
+                    }
+                }
+            )
+            WorkReportScreen(
+                viewModel = workReportVm,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
         composable(Screen.ParentDashboard.route) {
+            val parentVm: ParentDashboardViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return ParentDashboardViewModel(
+                            authRepository = appContainer.authRepository,
+                            studentRepository = appContainer.studentRepository,
+                            attendanceRepository = appContainer.attendanceRepository,
+                            workReportRepository = appContainer.workReportRepository,
+                            notificationRepository = appContainer.notificationRepository
+                        ) as T
+                    }
+                }
+            )
             ParentDashboardScreen(
+                viewModel = parentVm,
+                localeManager = appContainer.localeManager,
                 onSignOut = {
                     authViewModel.signOut()
                     navController.navigate(Screen.Login.route) {

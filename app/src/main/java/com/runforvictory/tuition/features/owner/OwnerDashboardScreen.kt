@@ -60,6 +60,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.runforvictory.tuition.R
 import com.runforvictory.tuition.core.Resource
+import com.runforvictory.tuition.core.components.BrandTopAppBar
+import com.runforvictory.tuition.core.localization.LocaleManager
 import com.runforvictory.tuition.core.theme.BrandGoldPrimary
 import com.runforvictory.tuition.core.theme.BrandNavyPrimary
 import com.runforvictory.tuition.core.theme.BrandTealPrimary
@@ -80,8 +82,10 @@ fun OwnerDashboardScreen(
     attendanceRepository: AttendanceRepository? = null,
     onNavigateToStudents: () -> Unit,
     onNavigateToAttendance: () -> Unit = {},
+    onNavigateToReports: () -> Unit = {},
     onSignOut: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    localeManager: LocaleManager? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -103,21 +107,10 @@ fun OwnerDashboardScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = stringResource(id = R.string.app_name),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = stringResource(id = R.string.role_owner) + " - " + stringResource(id = R.string.app_subtitle),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = BrandGoldPrimary
-                        )
-                    }
-                },
+            BrandTopAppBar(
+                title = stringResource(id = R.string.app_name),
+                subtitle = stringResource(id = R.string.role_owner) + " • " + stringResource(id = R.string.app_subtitle),
+                localeManager = localeManager,
                 actions = {
                     IconButton(onClick = onSignOut) {
                         Icon(
@@ -125,12 +118,7 @@ fun OwnerDashboardScreen(
                             contentDescription = stringResource(id = R.string.action_logout)
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BrandNavyPrimary,
-                    titleContentColor = MaterialTheme.colorScheme.surface,
-                    actionIconContentColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -163,13 +151,13 @@ fun OwnerDashboardScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "Ravi Kumar (Owner Command Center)",
+                                    text = stringResource(id = R.string.owner_command_center_title),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandNavyPrimary
                                 )
                                 Text(
-                                    text = "Run for Victory Tuition Centre",
+                                    text = stringResource(id = R.string.tuition_centre_default),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -185,7 +173,7 @@ fun OwnerDashboardScreen(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.size(6.dp))
-                                Text("Invite")
+                                Text(stringResource(id = R.string.owner_invite_user))
                             }
                         }
 
@@ -238,7 +226,9 @@ fun OwnerDashboardScreen(
                         title = "Reports",
                         value = "Daily Work Logs",
                         icon = Icons.Default.Assessment,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(onClick = onNavigateToReports)
                     )
                     MetricCard(
                         title = "Geofence",
@@ -320,12 +310,12 @@ fun OwnerDashboardScreen(
                         FilterChip(
                             selected = selectedRole == "tutor",
                             onClick = { selectedRole = "tutor" },
-                            label = { Text("Tutor") }
+                            label = { Text(stringResource(id = R.string.role_tutor)) }
                         )
                         FilterChip(
                             selected = selectedRole == "parent",
                             onClick = { selectedRole = "parent" },
-                            label = { Text("Parent") }
+                            label = { Text(stringResource(id = R.string.role_parent)) }
                         )
                     }
 
@@ -334,7 +324,7 @@ fun OwnerDashboardScreen(
                     OutlinedTextField(
                         value = inviteEmail,
                         onValueChange = { inviteEmail = it },
-                        label = { Text("Email Address") },
+                        label = { Text(stringResource(id = R.string.auth_email_label)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -351,12 +341,12 @@ fun OwnerDashboardScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = BrandTealPrimary)
                 ) {
-                    Text("Send Invite")
+                    Text(stringResource(id = R.string.owner_send_invitation))
                 }
             },
             dismissButton = {
                 OutlinedButton(onClick = { isInviteDialogOpen = false }) {
-                    Text("Cancel")
+                    Text(stringResource(id = R.string.action_cancel))
                 }
             }
         )
@@ -454,7 +444,7 @@ fun OwnerDashboardScreen(
             },
             dismissButton = {
                 OutlinedButton(onClick = { selectedRecordForOverride = null }) {
-                    Text("Cancel")
+                    Text(stringResource(id = R.string.action_cancel))
                 }
             }
         )

@@ -526,7 +526,7 @@ private fun StudentDirectoryCard(
                 Icon(Icons.Default.Person, contentDescription = null, tint = BrandTealPrimary, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Guardian: ${student.guardianName}",
+                    text = stringResource(id = R.string.student_guardian_label, student.guardianName),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -555,13 +555,17 @@ private fun StudentDirectoryCard(
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
                         Text(
-                            text = "Archived on ${student.archivedAt?.format(DateTimeFormatter.ofPattern("dd MMM yyyy")) ?: "N/A"} by ${student.archivedBy ?: "Owner"}",
+                            text = stringResource(
+                                id = R.string.student_archived_info,
+                                student.archivedAt?.format(DateTimeFormatter.ofPattern("dd MMM yyyy")) ?: "N/A",
+                                student.archivedBy ?: stringResource(id = R.string.role_owner)
+                            ),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold
                         )
                         student.archivedReason?.let { reason ->
                             Text(
-                                text = "Reason: $reason",
+                                text = stringResource(id = R.string.student_reason_label, reason),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -797,8 +801,8 @@ private fun StudentHistoryDialog(
                                             ) {
                                                 Column(modifier = Modifier.padding(8.dp)) {
                                                     Text(text = "Date: ${att.attendanceDate} - ${att.status.name}", fontWeight = FontWeight.Bold)
-                                                    Text(text = "Time: ${att.checkInTime.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${att.checkOutTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "Session in progress"}")
-                                                    att.durationMinutes?.let { Text(text = "Duration: $it mins") }
+                                                    Text(text = stringResource(id = R.string.student_time_range, att.checkInTime.format(DateTimeFormatter.ofPattern("HH:mm")), att.checkOutTime?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: stringResource(id = R.string.student_session_in_progress)))
+                                                    att.durationMinutes?.let { Text(text = stringResource(id = R.string.student_duration_mins, it)) }
                                                 }
                                             }
                                         }
@@ -807,7 +811,7 @@ private fun StudentHistoryDialog(
                             }
                             2 -> {
                                 if (history.workLogs.isEmpty()) {
-                                    Text("No daily work reports recorded yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(stringResource(id = R.string.parent_no_reports_yet), color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 } else {
                                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         history.workLogs.forEach { log ->
@@ -817,10 +821,10 @@ private fun StudentHistoryDialog(
                                             ) {
                                                 Column(modifier = Modifier.padding(8.dp)) {
                                                     Text(text = "${log.subject} - ${log.reportDate}", fontWeight = FontWeight.Bold, color = BrandTealPrimary)
-                                                    Text(text = "Classwork: ${log.workCompleted}")
-                                                    log.homework?.let { Text(text = "Homework: $it", fontWeight = FontWeight.SemiBold) }
-                                                    log.progressNotes?.let { Text(text = "Notes: $it") }
-                                                    Text(text = "By Teacher: ${log.tutorName}", style = MaterialTheme.typography.labelSmall)
+                                                    Text(text = stringResource(id = R.string.student_classwork_label, log.workCompleted))
+                                                    log.homework?.let { Text(text = stringResource(id = R.string.student_homework_label, it), fontWeight = FontWeight.SemiBold) }
+                                                    log.progressNotes?.let { Text(text = stringResource(id = R.string.student_notes_label, it)) }
+                                                    Text(text = stringResource(id = R.string.student_by_teacher, log.tutorName), style = MaterialTheme.typography.labelSmall)
                                                 }
                                             }
                                         }

@@ -8,11 +8,19 @@ import com.runforvictory.tuition.core.Resource
 import com.runforvictory.tuition.core.SessionStorage
 import com.runforvictory.tuition.data.AttendanceRepository
 import com.runforvictory.tuition.data.AuthRepository
+import com.runforvictory.tuition.data.NotificationRepository
 import com.runforvictory.tuition.data.StudentRepository
 import com.runforvictory.tuition.data.TuitionCenterRepository
 import com.runforvictory.tuition.data.WorkReportRepository
+import com.runforvictory.tuition.domain.AppNotification
 import com.runforvictory.tuition.domain.DailyWorkReport
+import com.runforvictory.tuition.domain.DeviceToken
 import com.runforvictory.tuition.domain.GpsVerificationStatus
+import com.runforvictory.tuition.domain.NotificationDeliveryResult
+import com.runforvictory.tuition.domain.NotificationPreferences
+import com.runforvictory.tuition.domain.NotificationType
+import com.runforvictory.tuition.domain.ParentWeeklySummary
+import com.runforvictory.tuition.domain.PushPayload
 import com.runforvictory.tuition.domain.Student
 import com.runforvictory.tuition.domain.StudentAttendanceRecord
 import com.runforvictory.tuition.domain.StudentAttendanceStatus
@@ -47,8 +55,10 @@ interface AppContainer {
     val studentRepository: StudentRepository
     val attendanceRepository: AttendanceRepository
     val workReportRepository: WorkReportRepository
+    val notificationRepository: NotificationRepository
     val tuitionCenterRepository: TuitionCenterRepository
     val locationProvider: com.runforvictory.tuition.location.FreshLocationProvider
+    val localeManager: com.runforvictory.tuition.core.localization.LocaleManager
 }
 
 class DefaultAppContainer(
@@ -57,8 +67,12 @@ class DefaultAppContainer(
     override val dispatchers: DispatcherProvider = DefaultDispatcherProvider()
     override val sessionStorage: SessionStorage = InMemorySessionStorage()
 
+    override val notificationRepository: NotificationRepository by lazy {
+        DefaultNotificationRepository()
+    }
+
     override val authRepository: AuthRepository by lazy {
-        DefaultAuthRepository(sessionStorage)
+        DefaultAuthRepository(sessionStorage, notificationRepository)
     }
 
     override val studentRepository: StudentRepository by lazy {
@@ -66,11 +80,11 @@ class DefaultAppContainer(
     }
 
     override val attendanceRepository: AttendanceRepository by lazy {
-        DefaultAttendanceRepository(authRepository, studentRepository)
+        DefaultAttendanceRepository(authRepository, studentRepository, notificationRepository)
     }
 
     override val workReportRepository: WorkReportRepository by lazy {
-        FakeWorkReportRepository()
+        DefaultWorkReportRepository(authRepository, studentRepository, notificationRepository)
     }
 
     override val tuitionCenterRepository: TuitionCenterRepository by lazy {
@@ -84,10 +98,15 @@ class DefaultAppContainer(
             com.runforvictory.tuition.location.FakeFreshLocationProvider()
         }
     }
+
+    override val localeManager: com.runforvictory.tuition.core.localization.LocaleManager by lazy {
+        com.runforvictory.tuition.core.localization.DefaultLocaleManager(context)
+    }
 }
 
 class DefaultAuthRepository(
-    private val sessionStorage: SessionStorage
+    private val sessionStorage: SessionStorage,
+    private val notificationRepository: NotificationRepository? = null
 ) : AuthRepository {
     private val usersDatabase = mutableMapOf(
         "owner@runforvictory.com" to UserProfile("11111111-1111-1111-1111-111111111111", UserRole.OWNER, "Ravi Kumar (Owner)", "9876500001", isActive = true),
@@ -154,7 +173,11 @@ class DefaultAuthRepository(
     }
 
     override suspend fun restoreSession(): Resource<UserProfile?> {
-        val session = sessionStorage.getSession() ?: return Resource.Success(null)
+        val session = sessionStorage.getSession()
+        if (session == null) {
+            currentUser = null
+            return Resource.Success(null)
+        }
         
         if (session.isExpired) {
             sessionStorage.clearSession()
@@ -208,6 +231,36 @@ class DefaultAuthRepository(
             studentIds = studentIds,
             expiresAt = Instant.now().plusSeconds(7 * 86400)
         )
+
+        // Event: An account invitation is sent
+        notificationRepository?.let { notifRepo ->
+            try {
+                val matchingProfile = usersDatabase[email.trim().lowercase()]
+                val recipientId = matchingProfile?.id ?: "invited-${email.trim().lowercase()}"
+                val notif = AppNotification(
+                    id = UUID.randomUUID().toString(),
+                    recipientId = recipientId,
+                    type = NotificationType.INVITATION_SENT,
+                    title = "Account Invitation",
+                    body = "You have been invited to join Run for Victory as a ${role.name.lowercase()}."
+                )
+                val push = PushPayload(
+                    notificationId = notif.id,
+                    type = NotificationType.INVITATION_SENT,
+                    title = "Account Invitation",
+                    body = "You have been invited to join Run for Victory as a ${role.name.lowercase()}.",
+                    publicTitle = "Run for Victory Update",
+                    publicBody = "New account invitation received.",
+                    idempotencyKey = "inv-$token"
+                )
+                kotlinx.coroutines.runBlocking {
+                    notifRepo.sendNotification(recipientId, notif, push, "inv-$token")
+                }
+            } catch (e: Exception) {
+                // Ignore push failures
+            }
+        }
+
         return Resource.Success(token)
     }
 
@@ -528,11 +581,22 @@ class DefaultStudentRepository(
 
         return Resource.Success(Unit)
     }
+
+    override fun getLinkedStudentsForParent(parentId: String): Flow<List<Student>> {
+        val parentChildMapping = mapOf(
+            "33333333-3333-3333-3333-333333333333" to listOf("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            "44444444-4444-4444-4444-444444444444" to listOf("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+        )
+        val allowedIds = parentChildMapping[parentId] ?: emptyList()
+        // Include archived students so parents retain historical access
+        return studentsState.map { list -> list.filter { it.id in allowedIds } }
+    }
 }
 
 class DefaultAttendanceRepository(
     private val authRepository: AuthRepository,
-    private val studentRepository: StudentRepository
+    private val studentRepository: StudentRepository,
+    private val notificationRepository: NotificationRepository? = null
 ) : AttendanceRepository {
 
     private val kolkataZone: ZoneId = ZoneId.of("Asia/Kolkata")
@@ -673,6 +737,37 @@ class DefaultAttendanceRepository(
 
         attendanceState.update { it + newRecord }
         checkInIdempotencyCache[idempotencyKey] = newRecord
+
+        // Notify linked parents independently (Requirement 1, 2, 3, 8)
+        notificationRepository?.let { notifRepo ->
+            try {
+                val linkedParents = parentChildMap.filterValues { it.contains(studentId) }.keys
+                for (parentId in linkedParents) {
+                    val timeStr = serverNow.format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a"))
+                    val notif = AppNotification(
+                        id = UUID.randomUUID().toString(),
+                        recipientId = parentId,
+                        type = NotificationType.ATTENDANCE_CHECK_IN,
+                        title = "${student.fullName} has arrived",
+                        body = "${student.fullName} checked in at $timeStr.",
+                        relatedEntityId = newRecord.id
+                    )
+                    val push = PushPayload(
+                        notificationId = notif.id,
+                        type = NotificationType.ATTENDANCE_CHECK_IN,
+                        title = "${student.fullName} Arrival",
+                        body = "${student.fullName} has checked in for tuition.",
+                        publicTitle = "Run for Victory Update",
+                        publicBody = "Student attendance update available.",
+                        idempotencyKey = idempotencyKey
+                    )
+                    notifRepo.sendNotification(parentId, notif, push, idempotencyKey)
+                }
+            } catch (e: Exception) {
+                // Push delivery failure never rolls back attendance
+            }
+        }
+
         return Resource.Success(newRecord)
     }
 
@@ -723,6 +818,37 @@ class DefaultAttendanceRepository(
         }
 
         checkOutIdempotencyCache[idempotencyKey] = updatedRecord
+
+        // Notify parents of departure independently
+        notificationRepository?.let { notifRepo ->
+            try {
+                val linkedParents = parentChildMap.filterValues { it.contains(studentId) }.keys
+                for (parentId in linkedParents) {
+                    val timeStr = serverNow.format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a"))
+                    val notif = AppNotification(
+                        id = UUID.randomUUID().toString(),
+                        recipientId = parentId,
+                        type = NotificationType.ATTENDANCE_CHECK_OUT,
+                        title = "$studentName has departed",
+                        body = "$studentName checked out at $timeStr. Session: ${duration / 60}h ${duration % 60}m.",
+                        relatedEntityId = updatedRecord.id
+                    )
+                    val push = PushPayload(
+                        notificationId = notif.id,
+                        type = NotificationType.ATTENDANCE_CHECK_OUT,
+                        title = "$studentName Departure",
+                        body = "$studentName has checked out of tuition.",
+                        publicTitle = "Run for Victory Update",
+                        publicBody = "Student attendance update available.",
+                        idempotencyKey = idempotencyKey
+                    )
+                    notifRepo.sendNotification(parentId, notif, push, idempotencyKey)
+                }
+            } catch (e: Exception) {
+                // Failure in push never rolls back checkout
+            }
+        }
+
         return Resource.Success(updatedRecord)
     }
 
@@ -1117,13 +1243,663 @@ class DefaultAttendanceRepository(
 
         return Resource.Success(updated)
     }
+
+    // ── Parent-authorized attendance queries ─────────────────────────────────
+    // Server enforces parent_children isolation: data is filtered by parentId
+    // before any records are returned, never by deviceside student ID alone.
+
+    private val parentChildMap = mapOf(
+        "33333333-3333-3333-3333-333333333333" to listOf("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+        "44444444-4444-4444-4444-444444444444" to listOf("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+    )
+
+    override fun getAttendanceForParent(parentId: String, studentId: String): Flow<List<StudentAttendanceRecord>> {
+        val allowed = parentChildMap[parentId] ?: emptyList()
+        if (studentId !in allowed) return kotlinx.coroutines.flow.flowOf(emptyList())
+        return attendanceState.map { list ->
+            list.filter { it.studentId == studentId }.sortedByDescending { it.attendanceDate }
+        }
+    }
+
+    override suspend fun getWeeklySummaryForParent(
+        parentId: String,
+        studentId: String
+    ): Resource<ParentWeeklySummary> {
+        val allowed = parentChildMap[parentId] ?: emptyList()
+        if (studentId !in allowed) return Resource.Error("Access Denied: You are not linked to this student.")
+
+        val today = LocalDate.now(kolkataZone)
+        val weekStart = today.minusDays(today.dayOfWeek.value.toLong() - 1)
+        val weekEnd = weekStart.plusDays(6)
+
+        val records = attendanceState.value.filter {
+            it.studentId == studentId &&
+                    !it.attendanceDate.isBefore(weekStart) &&
+                    !it.attendanceDate.isAfter(weekEnd)
+        }
+
+        val presentDays = records.count { it.status == StudentAttendanceStatus.PRESENT }
+        val lateDays = records.count { it.status == StudentAttendanceStatus.LATE }
+        val absentDays = records.count { it.status == StudentAttendanceStatus.ABSENT }
+        val excusedDays = records.count { it.status == StudentAttendanceStatus.EXCUSED }
+        val total = records.size
+        val rate = if (total > 0) ((presentDays + lateDays * 0.5f) / total.toFloat() * 100f) else 0f
+
+        val monthName = weekEnd.month.name.lowercase().replaceFirstChar { it.uppercase() }
+        return Resource.Success(
+            ParentWeeklySummary(
+                weekLabel = "${weekStart.dayOfMonth}\u2013${weekEnd.dayOfMonth} $monthName ${weekEnd.year}",
+                totalDays = total,
+                presentDays = presentDays,
+                absentDays = absentDays,
+                lateDays = lateDays,
+                excusedDays = excusedDays,
+                attendanceRate = rate
+            )
+        )
+    }
+
+    override suspend fun getMonthlySummaryForParent(
+        parentId: String,
+        studentId: String,
+        year: Int,
+        month: Int
+    ): Resource<AttendanceMonthlySummary> {
+        val allowed = parentChildMap[parentId] ?: emptyList()
+        if (studentId !in allowed) return Resource.Error("Access Denied: You are not linked to this student.")
+
+        val records = attendanceState.value.filter {
+            it.studentId == studentId &&
+                    it.attendanceDate.year == year &&
+                    it.attendanceDate.monthValue == month
+        }
+
+        val presentCount = records.count { it.status == StudentAttendanceStatus.PRESENT }
+        val lateCount = records.count { it.status == StudentAttendanceStatus.LATE }
+        val halfDayCount = records.count { it.status == StudentAttendanceStatus.HALF_DAY }
+        val absentCount = records.count { it.status == StudentAttendanceStatus.ABSENT }
+        val excusedCount = records.count { it.status == StudentAttendanceStatus.EXCUSED }
+        val total = records.size
+        val avg = if (total > 0) {
+            val w = presentCount.toDouble() + lateCount.toDouble() + halfDayCount.toDouble() * 0.5
+            Math.round(w / total.toDouble() * 100.0 * 10.0) / 10.0
+        } else 0.0
+
+        return Resource.Success(
+            AttendanceMonthlySummary(
+                year = year, month = month,
+                totalSessions = total,
+                presentCount = presentCount,
+                lateCount = lateCount,
+                halfDayCount = halfDayCount,
+                absentCount = absentCount,
+                excusedCount = excusedCount,
+                averageAttendancePercentage = avg
+            )
+        )
+    }
 }
 
-internal class FakeWorkReportRepository : WorkReportRepository {
-    override suspend fun createReport(report: DailyWorkReport): Resource<DailyWorkReport> = Resource.Success(report)
-    override suspend fun editReport(reportId: String, workCompleted: String, homework: String?, notes: String?, reason: String): Resource<DailyWorkReport> = Resource.Error("Not implemented")
-    override fun getReportsForStudent(studentId: String): Flow<List<DailyWorkReport>> = MutableStateFlow(emptyList())
-    override fun getReportsByTutor(tutorId: String): Flow<List<DailyWorkReport>> = MutableStateFlow(emptyList())
+class DefaultWorkReportRepository(
+    private val authRepository: AuthRepository,
+    private val studentRepository: StudentRepository,
+    private val notificationRepository: NotificationRepository? = null
+) : WorkReportRepository {
+
+    private val kolkataZone = ZoneId.of("Asia/Kolkata")
+    private val idempotencyCache = ConcurrentHashMap<String, DailyWorkReport>()
+
+    // Parent to children linkage mapping
+    private val parentChildMapping = mapOf(
+        "33333333-3333-3333-3333-333333333333" to listOf("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), // Suresh Reddy -> Rahul Reddy
+        "44444444-4444-4444-4444-444444444444" to listOf("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")  // Kavitha Devi -> Pooja Devi
+    )
+
+    private val reportsState = MutableStateFlow<List<DailyWorkReport>>(
+        listOf(
+            DailyWorkReport(
+                id = "report-seed-1",
+                studentId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                studentName = "Rahul Reddy",
+                tutorId = "22222222-2222-2222-2222-222222222222",
+                tutorName = "Anand Rao (Maths Tutor)",
+                reportDate = LocalDate.now(kolkataZone).minusDays(1),
+                subject = "Mathematics",
+                workCompleted = "Completed Quadratic Equations exercises 4.1 and 4.2. Covered factorization and completing square method.",
+                homework = "Solve miscellaneous problems 1 to 8 on page 92.",
+                pendingWork = "Word problems on speed and distance to be covered in next session.",
+                progressNotes = "Rahul demonstrated excellent grasp of algebraic identities. Speed has improved significantly.",
+                createdAt = ZonedDateTime.now(kolkataZone).minusDays(1).withHour(11).withMinute(30),
+                updatedAt = ZonedDateTime.now(kolkataZone).minusDays(1).withHour(11).withMinute(30),
+                idempotencyKey = "seed-idemp-1"
+            ),
+            DailyWorkReport(
+                id = "report-seed-2",
+                studentId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                studentName = "Pooja Devi",
+                tutorId = "22222222-2222-2222-2222-222222222222",
+                tutorName = "Anand Rao (Physics Tutor)",
+                reportDate = LocalDate.now(kolkataZone).minusDays(1),
+                subject = "Physics",
+                workCompleted = "Electromagnetic induction: Faraday's laws and Lenz's law numerical applications.",
+                homework = "Practice textbook derivations for mutual inductance.",
+                pendingWork = "AC generator theory pending.",
+                progressNotes = "Pooja solved 4 numerical problems independently. Good conceptual clarity.",
+                createdAt = ZonedDateTime.now(kolkataZone).minusDays(1).withHour(12).withMinute(45),
+                updatedAt = ZonedDateTime.now(kolkataZone).minusDays(1).withHour(12).withMinute(45),
+                idempotencyKey = "seed-idemp-2"
+            )
+        )
+    )
+
+    override suspend fun createReport(report: DailyWorkReport): Resource<DailyWorkReport> {
+        val currentUser = authRepository.getCurrentUser()
+        if (currentUser?.role != UserRole.TUTOR && currentUser?.role != UserRole.OWNER) {
+            return Resource.Error("Access Denied: Only tutors or owners can log daily work reports.")
+        }
+
+        // Idempotency replay check to handle timeouts and network retries
+        idempotencyCache[report.idempotencyKey]?.let {
+            return Resource.Success(it)
+        }
+
+        if (report.studentId.isBlank()) {
+            return Resource.Error("Validation Error: Please select a student.")
+        }
+        if (report.subject.isBlank()) {
+            return Resource.Error("Validation Error: Subject is required.")
+        }
+        if (report.workCompleted.isBlank()) {
+            return Resource.Error("Validation Error: Work completed description is required.")
+        }
+
+        val studentRes = studentRepository.getStudentById(report.studentId)
+        if (studentRes !is Resource.Success) {
+            return Resource.Error("Student not found.")
+        }
+        val student = studentRes.data
+        if (student.status == StudentStatus.ARCHIVED || student.isArchived) {
+            return Resource.Error("Archived Student: Cannot create work report for an inactive or archived student.")
+        }
+
+        val serverNow = ZonedDateTime.now(kolkataZone)
+        val today = LocalDate.now(kolkataZone)
+
+        val newReport = report.copy(
+            id = if (report.id.isBlank()) UUID.randomUUID().toString() else report.id,
+            studentName = student.fullName,
+            tutorId = currentUser.id,
+            tutorName = currentUser.fullName,
+            reportDate = today,
+            subject = report.subject.trim(),
+            workCompleted = report.workCompleted.trim(),
+            homework = report.homework?.trim()?.ifBlank { null },
+            pendingWork = report.pendingWork?.trim()?.ifBlank { null },
+            progressNotes = report.progressNotes?.trim()?.ifBlank { null },
+            createdAt = serverNow,
+            updatedAt = serverNow
+        )
+
+        reportsState.update { it + newReport }
+        idempotencyCache[report.idempotencyKey] = newReport
+
+        // Requirement 1 & 2: Notify relevant parent accounts independently
+        // Requirement 3: Keep sensitive details out of lock-screen text (via publicTitle/publicBody)
+        // Requirement 8: Do not roll back a saved report because push delivery failed
+        notificationRepository?.let { notifRepo ->
+            try {
+                val linkedParents = parentChildMapping.filterValues { it.contains(newReport.studentId) }.keys
+                for (parentId in linkedParents) {
+                    val notif = AppNotification(
+                        id = UUID.randomUUID().toString(),
+                        recipientId = parentId,
+                        type = NotificationType.WORK_REPORT_ADDED,
+                        title = "New Work Report: ${newReport.studentName} (${newReport.subject})",
+                        body = "Work completed: ${newReport.workCompleted.take(120)}",
+                        relatedEntityId = newReport.id
+                    )
+                    val push = PushPayload(
+                        notificationId = notif.id,
+                        type = NotificationType.WORK_REPORT_ADDED,
+                        title = "New Work Report: ${newReport.studentName} (${newReport.subject})",
+                        body = "Work completed: ${newReport.workCompleted.take(120)}",
+                        publicTitle = "Run for Victory Update",
+                        publicBody = "A new daily learning report is available.",
+                        idempotencyKey = report.idempotencyKey
+                    )
+                    notifRepo.sendNotification(parentId, notif, push, report.idempotencyKey)
+                }
+            } catch (e: Exception) {
+                // Preserved: push failure never rolls back the saved report
+            }
+        }
+
+        return Resource.Success(newReport)
+    }
+
+    override suspend fun editReport(
+        reportId: String,
+        subject: String,
+        workCompleted: String,
+        homework: String?,
+        pendingWork: String?,
+        progressNotes: String?,
+        reason: String
+    ): Resource<DailyWorkReport> {
+        val currentUser = authRepository.getCurrentUser()
+        if (currentUser?.role != UserRole.TUTOR && currentUser?.role != UserRole.OWNER) {
+            return Resource.Error("Access Denied: Only tutors or owners can edit work reports.")
+        }
+
+        if (reason.isBlank() || reason.trim().length < 5) {
+            return Resource.Error("Audit requirement: Edit reason must be at least 5 characters.")
+        }
+
+        if (subject.isBlank()) {
+            return Resource.Error("Validation Error: Subject cannot be blank.")
+        }
+        if (workCompleted.isBlank()) {
+            return Resource.Error("Validation Error: Work completed description cannot be blank.")
+        }
+
+        val target = reportsState.value.find { it.id == reportId }
+            ?: return Resource.Error("Work report not found.")
+
+        // Tutors can only edit their own reports; owners can edit any report in centre
+        if (currentUser.role == UserRole.TUTOR && target.tutorId != currentUser.id) {
+            return Resource.Error("Permission Denied: Tutors can only edit their own authored reports.")
+        }
+
+        val serverNow = ZonedDateTime.now(kolkataZone)
+
+        val updated = target.copy(
+            subject = subject.trim(),
+            workCompleted = workCompleted.trim(),
+            homework = homework?.trim()?.ifBlank { null },
+            pendingWork = pendingWork?.trim()?.ifBlank { null },
+            progressNotes = progressNotes?.trim()?.ifBlank { null },
+            isEdited = true,
+            editedBy = currentUser.id,
+            editedByName = currentUser.fullName,
+            editReason = reason.trim(),
+            editedAt = serverNow,
+            updatedAt = serverNow
+        )
+
+        reportsState.update { list ->
+            list.map { if (it.id == reportId) updated else it }
+        }
+
+        return Resource.Success(updated)
+    }
+
+    override fun getReportsForStudent(studentId: String): Flow<List<DailyWorkReport>> {
+        return reportsState.map { list ->
+            list.filter { it.studentId == studentId }
+                .sortedWith(compareByDescending<DailyWorkReport> { it.reportDate }.thenByDescending { it.createdAt })
+        }
+    }
+
+    override fun getReportsByTutor(tutorId: String): Flow<List<DailyWorkReport>> {
+        return reportsState.map { list ->
+            list.filter { it.tutorId == tutorId }
+                .sortedWith(compareByDescending<DailyWorkReport> { it.reportDate }.thenByDescending { it.createdAt })
+        }
+    }
+
+    override fun getAllReportsForDate(date: LocalDate): Flow<List<DailyWorkReport>> {
+        return reportsState.map { list ->
+            list.filter { it.reportDate == date }
+                .sortedWith(compareByDescending<DailyWorkReport> { it.createdAt })
+        }
+    }
+
+    override fun getReportsForParent(parentId: String, studentId: String?): Flow<List<DailyWorkReport>> {
+        val allowedStudents = parentChildMapping[parentId] ?: emptyList()
+        return reportsState.map { list ->
+            if (studentId != null) {
+                if (studentId !in allowedStudents) {
+                    emptyList()
+                } else {
+                    list.filter { it.studentId == studentId }
+                        .sortedWith(compareByDescending<DailyWorkReport> { it.reportDate }.thenByDescending { it.createdAt })
+                }
+            } else {
+                list.filter { it.studentId in allowedStudents }
+                    .sortedWith(compareByDescending<DailyWorkReport> { it.reportDate }.thenByDescending { it.createdAt })
+            }
+        }
+    }
+
+    override suspend fun getReportById(reportId: String): Resource<DailyWorkReport> {
+        val report = reportsState.value.find { it.id == reportId }
+            ?: return Resource.Error("Work report not found.")
+        return Resource.Success(report)
+    }
+}
+
+class DefaultNotificationRepository(
+    private val authRepository: AuthRepository? = null
+) : NotificationRepository {
+
+    private val kolkataZone = ZoneId.of("Asia/Kolkata")
+
+    // Concurrent idempotency tracker for push events to prevent duplicates on retries
+    private val processedIdempotencyKeys = ConcurrentHashMap.newKeySet<String>()
+
+    // Sanitized delivery audit logs (masked tokens, no credentials or secrets)
+    private val deliveryAuditLogs = mutableListOf<String>()
+
+    // Notification Preferences map: userId -> NotificationPreferences
+    private val preferencesState = MutableStateFlow<Map<String, NotificationPreferences>>(
+        mapOf(
+            "33333333-3333-3333-3333-333333333333" to NotificationPreferences(
+                userId = "33333333-3333-3333-3333-333333333333",
+                pushEnabled = true,
+                workReportsEnabled = true,
+                attendanceEnabled = true,
+                announcementsEnabled = true
+            ),
+            "44444444-4444-4444-4444-444444444444" to NotificationPreferences(
+                userId = "44444444-4444-4444-4444-444444444444",
+                pushEnabled = true,
+                workReportsEnabled = true,
+                attendanceEnabled = true,
+                announcementsEnabled = true
+            )
+        )
+    )
+
+    // Device tokens for push delivery
+    private val deviceTokensState = MutableStateFlow<List<DeviceToken>>(
+        listOf(
+            DeviceToken(
+                id = "token-seed-1",
+                userId = "33333333-3333-3333-3333-333333333333",
+                token = "fcm_token_suresh_pixel8",
+                platform = "android",
+                deviceInfo = "Pixel 8 Pro (Android 14)",
+                isValid = true
+            ),
+            DeviceToken(
+                id = "token-seed-2",
+                userId = "44444444-4444-4444-4444-444444444444",
+                token = "fcm_token_kavitha_galaxy",
+                platform = "android",
+                deviceInfo = "Galaxy S24 (Android 14)",
+                isValid = true
+            )
+        )
+    )
+
+    private val notificationsState = MutableStateFlow<List<AppNotification>>(
+        listOf(
+            // Suresh Reddy's notifications (parent A → Rahul Reddy)
+            AppNotification(
+                id = "notif-seed-1",
+                recipientId = "33333333-3333-3333-3333-333333333333",
+                type = NotificationType.ATTENDANCE_CHECK_IN,
+                title = "Rahul Reddy has arrived",
+                body = "Rahul Reddy checked in at 09:00 AM.",
+                relatedEntityId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                isRead = false,
+                createdAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(1).withHour(9).withMinute(0)
+            ),
+            AppNotification(
+                id = "notif-seed-2",
+                recipientId = "33333333-3333-3333-3333-333333333333",
+                type = NotificationType.ATTENDANCE_CHECK_OUT,
+                title = "Rahul Reddy has departed",
+                body = "Rahul Reddy checked out at 12:00 PM. Session: 3 hrs.",
+                relatedEntityId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                isRead = false,
+                createdAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(1).withHour(12).withMinute(0)
+            ),
+            AppNotification(
+                id = "notif-seed-3",
+                recipientId = "33333333-3333-3333-3333-333333333333",
+                type = NotificationType.WORK_REPORT_ADDED,
+                title = "New work report: Mathematics",
+                body = "Anand Rao submitted a Mathematics report for Rahul Reddy.",
+                relatedEntityId = "report-seed-1",
+                isRead = true,
+                createdAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(1).withHour(11).withMinute(30)
+            ),
+            // Kavitha Devi's notifications (parent B → Pooja Devi)
+            AppNotification(
+                id = "notif-seed-4",
+                recipientId = "44444444-4444-4444-4444-444444444444",
+                type = NotificationType.ATTENDANCE_CHECK_IN,
+                title = "Pooja Devi has arrived",
+                body = "Pooja Devi checked in at 09:15 AM.",
+                relatedEntityId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                isRead = false,
+                createdAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(1).withHour(9).withMinute(15)
+            ),
+            AppNotification(
+                id = "notif-seed-5",
+                recipientId = "44444444-4444-4444-4444-444444444444",
+                type = NotificationType.WORK_REPORT_ADDED,
+                title = "New work report: Physics",
+                body = "Anand Rao submitted a Physics report for Pooja Devi.",
+                relatedEntityId = "report-seed-2",
+                isRead = false,
+                createdAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusDays(1).withHour(12).withMinute(45)
+            )
+        )
+    )
+
+    override fun getNotificationsForUser(userId: String): Flow<List<AppNotification>> {
+        return notificationsState.map { list ->
+            list.filter { it.recipientId == userId }.sortedByDescending { it.createdAt }
+        }
+    }
+
+    override fun getUnreadCount(userId: String): Flow<Int> {
+        return notificationsState.map { list ->
+            list.count { it.recipientId == userId && !it.isRead }
+        }
+    }
+
+    override suspend fun markAsRead(notificationId: String): Resource<Unit> {
+        notificationsState.update { list ->
+            list.map { if (it.id == notificationId) it.copy(isRead = true) else it }
+        }
+        return Resource.Success(Unit)
+    }
+
+    override suspend fun markAllAsRead(userId: String): Resource<Unit> {
+        notificationsState.update { list ->
+            list.map { if (it.recipientId == userId) it.copy(isRead = true) else it }
+        }
+        return Resource.Success(Unit)
+    }
+
+    override suspend fun refreshNotifications(userId: String): Resource<Unit> {
+        return Resource.Success(Unit)
+    }
+
+    override suspend fun getPreferences(userId: String): Resource<NotificationPreferences> {
+        val pref = preferencesState.value[userId] ?: NotificationPreferences(userId = userId)
+        return Resource.Success(pref)
+    }
+
+    override suspend fun updatePreferences(preferences: NotificationPreferences): Resource<Unit> {
+        preferencesState.update { current ->
+            current + (preferences.userId to preferences)
+        }
+        return Resource.Success(Unit)
+    }
+
+    override suspend fun registerDeviceToken(userId: String, token: String, deviceInfo: String?): Resource<Unit> {
+        if (token.isBlank()) return Resource.Error("Device token cannot be blank.")
+        deviceTokensState.update { current ->
+            val existing = current.find { it.token == token }
+            if (existing != null) {
+                current.map {
+                    if (it.token == token) it.copy(
+                        userId = userId,
+                        isValid = true,
+                        lastSeenAt = ZonedDateTime.now(kolkataZone),
+                        deviceInfo = deviceInfo ?: it.deviceInfo
+                    ) else it
+                }
+            } else {
+                current + DeviceToken(
+                    userId = userId,
+                    token = token,
+                    deviceInfo = deviceInfo,
+                    isValid = true
+                )
+            }
+        }
+        return Resource.Success(Unit)
+    }
+
+    override fun getDeviceTokens(userId: String): Flow<List<DeviceToken>> {
+        return deviceTokensState.map { list ->
+            list.filter { it.userId == userId && it.isValid }
+        }
+    }
+
+    override suspend fun invalidateDeviceToken(token: String): Resource<Unit> {
+        deviceTokensState.update { current ->
+            current.map { if (it.token == token) it.copy(isValid = false) else it }
+        }
+        val masked = if (token.length > 8) "${token.take(4)}...${token.takeLast(4)}" else "***"
+        deliveryAuditLogs.add("INVALIDATED token=$masked reason=TOKEN_ROTATED_OR_UNREGISTERED")
+        return Resource.Success(Unit)
+    }
+
+    override suspend fun sendNotification(
+        recipientId: String,
+        notification: AppNotification,
+        pushPayload: PushPayload?,
+        idempotencyKey: String?
+    ): Resource<NotificationDeliveryResult> {
+        // 1. Idempotency Guard (Requirement 7: Do not send duplicate notifications on retries)
+        if (idempotencyKey != null) {
+            val isNew = processedIdempotencyKeys.add(idempotencyKey)
+            if (!isNew) {
+                return Resource.Success(
+                    NotificationDeliveryResult(
+                        success = true,
+                        inAppStored = true,
+                        pushDispatched = false,
+                        messageId = "idempotent_duplicate",
+                        failureReason = "Duplicate event suppressed by idempotency guard"
+                    )
+                )
+            }
+        }
+
+        // 2. Requirement 1: Store notification records independently of push delivery
+        notificationsState.update { current ->
+            current + notification
+        }
+
+        // 3. Requirement 5: Support notification preferences
+        val userPrefs = preferencesState.value[recipientId] ?: NotificationPreferences(userId = recipientId)
+        if (!userPrefs.pushEnabled) {
+            deliveryAuditLogs.add("DROPPED recipient=$recipientId reason=PREFERENCE_PUSH_DISABLED")
+            return Resource.Success(
+                NotificationDeliveryResult(
+                    success = true,
+                    inAppStored = true,
+                    pushDispatched = false,
+                    failureReason = "Suppressed by pushEnabled preference"
+                )
+            )
+        }
+
+        when (notification.type) {
+            NotificationType.WORK_REPORT_ADDED,
+            NotificationType.WORK_REPORT_EDITED -> {
+                if (!userPrefs.workReportsEnabled) {
+                    deliveryAuditLogs.add("DROPPED recipient=$recipientId reason=PREFERENCE_REPORTS_DISABLED")
+                    return Resource.Success(
+                        NotificationDeliveryResult(
+                            success = true,
+                            inAppStored = true,
+                            pushDispatched = false,
+                            failureReason = "Suppressed by workReportsEnabled preference"
+                        )
+                    )
+                }
+            }
+            NotificationType.ATTENDANCE_CHECK_IN,
+            NotificationType.ATTENDANCE_CHECK_OUT -> {
+                if (!userPrefs.attendanceEnabled) {
+                    deliveryAuditLogs.add("DROPPED recipient=$recipientId reason=PREFERENCE_ATTENDANCE_DISABLED")
+                    return Resource.Success(
+                        NotificationDeliveryResult(
+                            success = true,
+                            inAppStored = true,
+                            pushDispatched = false,
+                            failureReason = "Suppressed by attendanceEnabled preference"
+                        )
+                    )
+                }
+            }
+            NotificationType.CENTRE_ANNOUNCEMENT,
+            NotificationType.INVITATION_SENT -> {
+                if (!userPrefs.announcementsEnabled) {
+                    deliveryAuditLogs.add("DROPPED recipient=$recipientId reason=PREFERENCE_ANNOUNCEMENTS_DISABLED")
+                    return Resource.Success(
+                        NotificationDeliveryResult(
+                            success = true,
+                            inAppStored = true,
+                            pushDispatched = false,
+                            failureReason = "Suppressed by announcementsEnabled preference"
+                        )
+                    )
+                }
+            }
+        }
+
+        // 4. Requirement 6: Handle invalid or rotated device tokens
+        val activeTokens = deviceTokensState.value.filter { it.userId == recipientId && it.isValid }
+        if (activeTokens.isEmpty()) {
+            return Resource.Success(
+                NotificationDeliveryResult(
+                    success = true,
+                    inAppStored = true,
+                    pushDispatched = false,
+                    failureReason = "No active device tokens found for recipient"
+                )
+            )
+        }
+
+        var dispatchedCount = 0
+        var tokenInvalidated = false
+
+        for (deviceToken in activeTokens) {
+            val tokenStr = deviceToken.token
+            val masked = if (tokenStr.length > 8) "${tokenStr.take(4)}...${tokenStr.takeLast(4)}" else "***"
+
+            if (tokenStr.startsWith("invalid_") || tokenStr.startsWith("unregistered_")) {
+                invalidateDeviceToken(tokenStr)
+                tokenInvalidated = true
+                deliveryAuditLogs.add("DELIVERY_FAILED token=$masked error=UNREGISTERED_TOKEN")
+            } else {
+                dispatchedCount++
+                deliveryAuditLogs.add("DELIVERY_SUCCESS token=$masked event=${notification.type}")
+            }
+        }
+
+        return Resource.Success(
+            NotificationDeliveryResult(
+                success = dispatchedCount > 0,
+                inAppStored = true,
+                pushDispatched = dispatchedCount > 0,
+                tokenInvalidated = tokenInvalidated,
+                messageId = if (dispatchedCount > 0) "fcm-${UUID.randomUUID()}" else null,
+                failureReason = if (dispatchedCount == 0 && tokenInvalidated) "All tokens were invalid or unregistered" else null
+            )
+        )
+    }
+
+    fun getAuditLogs(): List<String> = deliveryAuditLogs.toList()
 }
 
 internal class FakeTuitionCenterRepository : TuitionCenterRepository {

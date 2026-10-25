@@ -91,17 +91,29 @@
     <string name="report_subject_label">Subject</string>
     <string name="report_work_completed_label">Work Completed</string>
     <string name="report_homework_label">Homework Assigned</string>
+    <string name="report_pending_work_label">Pending Work</string>
     <string name="report_progress_notes_label">Progress &amp; Behaviour Notes</string>
     <string name="report_author_label">Teacher: %1$s</string>
+    <string name="report_author_label_prefix">Teacher: </string>
     <string name="report_date_label">Date: %1$s</string>
     <string name="report_submitted_success">Work report submitted successfully!</string>
+    <string name="report_edit_reason_label">Edit Reason (Required, min 5 chars)</string>
+    <string name="report_edit_reason_hint">Describe what was corrected and why</string>
+    <string name="report_edit_dialog_title">Edit Work Report</string>
+    <string name="report_edit_success">Work report updated and audited successfully.</string>
+    <string name="report_count_suffix">reports</string>
+    <string name="report_log_new_tab">Log Report</string>
+    <string name="report_history_tab">History</string>
 
     <!-- Parent Dashboard -->
     <string name="parent_children_selector">Select Child</string>
-    <string name="parent_today_summary">Today\'s Academic Summary</string>
+    <string name="parent_today_summary">Today\'s Attendance</string>
     <string name="parent_recent_reports">Recent Work Reports</string>
     <string name="parent_attendance_calendar">Attendance Record</string>
-    <string name="parent_no_children_linked">No children linked to your parent account yet. Please contact the centre owner.</string>
+    <string name="parent_no_children_linked">No children linked to your account yet. Please contact the centre owner.</string>
+    <string name="parent_no_reports_yet">No work reports have been added yet. They will appear here once the teacher submits them.</string>
+    <string name="parent_no_notifications">No notifications yet.</string>
+    <string name="parent_attendance_rate">Rate</string>
 
     <!-- Errors & Reliability -->
     <string name="error_network_offline">No internet connection. Changes will sync when reconnected.</string>
@@ -146,4 +158,76 @@
     <string name="owner_override_reason_hint">Document reason (e.g., GPS drift verified inside premises)</string>
     <string name="owner_override_submit">Approve Override</string>
     <string name="owner_override_success">Teacher attendance override recorded in audit log.</string>
+
+    <!-- ── Attendance – additional keys ──────────────────────────────────── -->
+    <string name="attendance_checkout_pending">Checkout not yet recorded</string>
+    <string name="attendance_weekly_summary_title">This Week\'s Summary</string>
+
+    <!-- ── Actions – additional keys ─────────────────────────────────────── -->
+    <string name="action_load_more_reports">Load More Reports</string>
+    <string name="action_mark_all_read">Mark All Read</string>
+
+    <!-- ── Student status ────────────────────────────────────────────────── -->
+    <string name="student_archived_badge">Archived</string>
+
+    <!-- ── Notification Preferences & Push Delivery ──────────────────────── -->
+    <string name="notification_preferences_title">Notification Preferences</string>
+    <string name="notification_pref_push_enabled">Enable Push Notifications</string>
+    <string name="notification_pref_work_reports">Daily Work Reports</string>
+    <string name="notification_pref_attendance">Attendance Updates</string>
+    <string name="notification_pref_announcements">Announcements &amp; Notices</string>
+    <string name="action_refresh_notifications">Refresh Notifications</string>
+    <string name="action_notification_preferences">Notification Settings</string>
+    <string name="notification_invitation_title">Account Invitation</string>
+    <string name="notification_public_lockscreen_title">Run for Victory Update</string>
+    <string name="notification_public_lockscreen_body">You have a new update from your tuition centre.</string>
+
+    <!-- ── Language Selector & Branding ──────────────────────────────────── -->
+    <string name="language_selector_title">Select Language</string>
+    <string name="language_english">English</string>
+    <string name="language_telugu">Telugu</string>
+    <string name="language_switch_confirmation">Language changed</string>
+
+    <!-- ── Owner Dashboard Strings ────────────────────────────────────────── -->
+    <string name="owner_command_center_title">Ravi Kumar (Owner Command Center)</string>
+    <string name="owner_invite_user">Invite User</string>
+    <string name="owner_quick_stats">Centre Quick Overview</string>
+    <string name="owner_active_teachers">Teachers On Duty</string>
+    <string name="owner_active_students">Students Present</string>
+    <string name="owner_send_invitation">Send Invitation</string>
+    <string name="owner_invitation_sent_success">Invitation successfully sent to %1$s</string>
+    <string name="owner_select_role">Select Role</string>
+
+    <!-- ── Tutor Dashboard Strings ────────────────────────────────────────── -->
+    <string name="tutor_quick_actions">Quick Actions</string>
+    <string name="tutor_action_mark_attendance_desc">Mark student check-in, check-out and view daily register</string>
+    <string name="tutor_action_work_report_desc">Create daily work &amp; homework report for students</string>
+    <string name="tutor_proximity_required">Requires verified physical proximity within 150m of the centre.</string>
+    <string name="tutor_sessions_count">%1$d sessions</string>
+    <string name="tutor_check_in_at">Check-in: %1$s</string>
+    <string name="tutor_check_out_at">Check-out: %1$s</string>
+
+    <!-- ── Work Reports Strings ───────────────────────────────────────────── -->
+    <string name="report_select_student_subject">Select Student &amp; Subject</string>
+    <string name="report_academic_details">Academic Details</string>
+    <string name="report_no_filtered_reports">No work reports found matching the selected filter.</string>
+    <string name="report_edited_badge">EDITED</string>
+    <string name="report_correction_reason_prefix">Correction reason: %1$s (by %2$s)</string>
+    <string name="report_edit_dialog_header">Edit Work Report - %1$s</string>
+
+    <!-- ── Student Management Strings ────────────────────────────────────── -->
+    <string name="student_guardian_label">Guardian: %1$s</string>
+    <string name="student_archived_info">Archived on %1$s by %2$s</string>
+    <string name="student_reason_label">Reason: %1$s</string>
+    <string name="student_time_range">Time: %1$s to %2$s</string>
+    <string name="student_session_in_progress">Session in progress</string>
+    <string name="student_duration_mins">Duration: %1$d mins</string>
+    <string name="student_classwork_label">Classwork: %1$s</string>
+    <string name="student_homework_label">Homework: %1$s</string>
+    <string name="student_notes_label">Notes: %1$s</string>
+    <string name="student_by_teacher">By Teacher: %1$s</string>
+
+    <!-- ── Parent Dashboard Strings ──────────────────────────────────────── -->
+    <string name="parent_submitted_at">Submitted %1$s IST</string>
+    <string name="parent_edited_by">Edited • %1$s</string>
 </resources>

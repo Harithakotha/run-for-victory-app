@@ -91,17 +91,29 @@
     <string name="report_subject_label">విషయం (సబ్జెక్ట్)</string>
     <string name="report_work_completed_label">పూర్తి చేసిన పని / పాఠాలు</string>
     <string name="report_homework_label">ఇంటి పని (హోంవర్క్)</string>
+    <string name="report_pending_work_label">పెండింగ్ పని</string>
     <string name="report_progress_notes_label">ప్రగతి &amp; ప్రవర్తన గమనికలు</string>
     <string name="report_author_label">ఉపాధ్యాయుడు: %1$s</string>
+    <string name="report_author_label_prefix">ఉపాధ్యాయుడు: </string>
     <string name="report_date_label">తేదీ: %1$s</string>
     <string name="report_submitted_success">వర్క్ రిపోర్ట్ విజయవంతంగా సమర్పించబడింది!</string>
+    <string name="report_edit_reason_label">మార్పు కారణం (తప్పనిసరి, కనీసం 5 అక్షరాలు)</string>
+    <string name="report_edit_reason_hint">మార్చిన కారణాన్ని వివరించండి</string>
+    <string name="report_edit_dialog_title">వర్క్ రిపోర్ట్ సవరించండి</string>
+    <string name="report_edit_success">వర్క్ రిపోర్ట్ విజయవంతంగా నవీకరించబడింది మరియు ఆడిట్ చేయబడింది.</string>
+    <string name="report_count_suffix">నివేదికలు</string>
+    <string name="report_log_new_tab">నివేదిక నమోదు</string>
+    <string name="report_history_tab">చరిత్ర</string>
 
     <!-- Parent Dashboard -->
     <string name="parent_children_selector">పిల్లలను ఎంచుకోండి</string>
-    <string name="parent_today_summary">ఈ రోజు చదువు నివేదిక</string>
+    <string name="parent_today_summary">ఈ రోజు హాజరు వివరాలు</string>
     <string name="parent_recent_reports">ఇటీవలి వర్క్ రిపోర్టులు</string>
     <string name="parent_attendance_calendar">హాజరు వివరాలు</string>
     <string name="parent_no_children_linked">మీ ఖాతాకు ఇంకా పిల్లలు అనుసంధానించబడలేదు. యజమానిని సంప్రదించండి.</string>
+    <string name="parent_no_reports_yet">ఇంకా వర్క్ రిపోర్టులు నమోదు కాలేదు. ఉపాధ్యాయుడు సమర్పించిన తర్వాత ఇక్కడ కనిపిస్తాయి.</string>
+    <string name="parent_no_notifications">ఇంకా నోటిఫికేషన్‌లు లేవు.</string>
+    <string name="parent_attendance_rate">శాతం</string>
 
     <!-- Errors & Reliability -->
     <string name="error_network_offline">ఇంటర్నెట్ కనెక్షన్ లేదు. నెట్‌వర్క్ రాగానే మార్పులు సమకాలీకరించబడతాయి.</string>
@@ -146,4 +158,76 @@
     <string name="owner_override_reason_hint">ఆమోదానికి గల కారణాన్ని నమోదు చేయండి</string>
     <string name="owner_override_submit">దిద్దుబాటును ఆమోదించండి</string>
     <string name="owner_override_success">ఉపాధ్యాయుడి హాజరు దిద్దుబాటు ఆడిట్ లాగ్‌లో నమోదు చేయబడింది.</string>
+
+    <!-- ── Attendance – అదనపు keys ──────────────────────────────────────── -->
+    <string name="attendance_checkout_pending">చెక్-అవుట్ ఇంకా నమోదు కాలేదు</string>
+    <string name="attendance_weekly_summary_title">ఈ వారం సారాంశం</string>
+
+    <!-- ── Actions – అదనపు keys ────────────────────────────────────────── -->
+    <string name="action_load_more_reports">మరిన్ని రిపోర్టులు లోడ్ చేయండి</string>
+    <string name="action_mark_all_read">అన్నీ చదివినట్లు గుర్తించండి</string>
+
+    <!-- ── విద్యార్థి స్థితి ───────────────────────────────────────────── -->
+    <string name="student_archived_badge">ఆర్కైవ్ అయింది</string>
+
+    <!-- ── నోటిఫికేషన్ ప్రాధాన్యతలు &amp; పుష్ డెలివరీ ──────────────────────── -->
+    <string name="notification_preferences_title">నోటిఫికేషన్ ప్రాధాన్యతలు</string>
+    <string name="notification_pref_push_enabled">పుష్ నోటిఫికేషన్లను ప్రారంభించండి</string>
+    <string name="notification_pref_work_reports">రోజువారీ పని నివేదికలు</string>
+    <string name="notification_pref_attendance">హాజరు సమాచారం</string>
+    <string name="notification_pref_announcements">ప్రకటనలు &amp; సమాచారం</string>
+    <string name="action_refresh_notifications">నోటిఫికేషన్లను రిఫ్రెష్ చేయండి</string>
+    <string name="action_notification_preferences">నోటిఫికేషన్ సెట్టింగ్‌లు</string>
+    <string name="notification_invitation_title">ఖాతా ఆహ్వానం</string>
+    <string name="notification_public_lockscreen_title">రన్ ఫర్ విక్టరీ సమాచారం</string>
+    <string name="notification_public_lockscreen_body">మీ ట్యూషన్ సెంటర్ నుండి కొత్త సమాచారం అందుబాటులో ఉంది.</string>
+
+    <!-- ── భాషా ఎంపిక &amp; బ్రాండింగ్ ────────────────────────────────────── -->
+    <string name="language_selector_title">భాషను ఎంచుకోండి</string>
+    <string name="language_english">English</string>
+    <string name="language_telugu">తెలుగు</string>
+    <string name="language_switch_confirmation">భాష మార్చబడింది</string>
+
+    <!-- ── యజమాని డ్యాష్‌బోర్డ్ ─────────────────────────────────────────── -->
+    <string name="owner_command_center_title">రవి కుమార్ (యజమాని కమాండ్ సెంటర్)</string>
+    <string name="owner_invite_user">వినియోగదారుని ఆహ్వానించండి</string>
+    <string name="owner_quick_stats">ట్యూషన్ సెంటర్ స్థూల పరిశీలన</string>
+    <string name="owner_active_teachers">హాజరైన ఉపాధ్యాయులు</string>
+    <string name="owner_active_students">హాజరైన విద్యార్థులు</string>
+    <string name="owner_send_invitation">ఆహ్వానం పంపండి</string>
+    <string name="owner_invitation_sent_success">%1$s కు ఆహ్వానం విజయవంతంగా పంపబడింది</string>
+    <string name="owner_select_role">పాత్రను ఎంచుకోండి</string>
+
+    <!-- ── ఉపాధ్యాయుని డ్యాష్‌బోర్డ్ ─────────────────────────────────────── -->
+    <string name="tutor_quick_actions">త్వరిత చర్యలు</string>
+    <string name="tutor_action_mark_attendance_desc">విద్యార్థుల చెక్-ఇన్, చెక్-అవుట్ నమోదు చేయండి మరియు రోజువారీ రిజిస్టర్ చూడండి</string>
+    <string name="tutor_action_work_report_desc">విద్యార్థుల కోసం రోజువారీ పని మరియు హోంవర్క్ నివేదికను రూపొందించండి</string>
+    <string name="tutor_proximity_required">ట్యూషన్ సెంటర్ నుండి 150 మీటర్ల లోపల భౌతిక సామీప్య ధృవీకరణ అవసరం.</string>
+    <string name="tutor_sessions_count">%1$d సెషన్లు</string>
+    <string name="tutor_check_in_at">చెక్-ఇన్: %1$s</string>
+    <string name="tutor_check_out_at">చెక్-అవుట్: %1$s</string>
+
+    <!-- ── వర్క్ రిపోర్టులు ─────────────────────────────────────────────── -->
+    <string name="report_select_student_subject">విద్యార్థి మరియు సబ్జెక్ట్ ఎంచుకోండి</string>
+    <string name="report_academic_details">విద్యా వివరాలు</string>
+    <string name="report_no_filtered_reports">ఎంచుకున్న ఫిల్టర్‌కు సరిపోయే వర్క్ రిపోర్టులు కనుగొనబడలేదు.</string>
+    <string name="report_edited_badge">సవరించబడింది</string>
+    <string name="report_correction_reason_prefix">సవరణ కారణం: %1$s (%2$s ద్వారా)</string>
+    <string name="report_edit_dialog_header">వర్క్ రిపోర్ట్ సవరణ - %1$s</string>
+
+    <!-- ── విద్యార్థుల నిర్వహణ ─────────────────────────────────────────── -->
+    <string name="student_guardian_label">సంరక్షకుడు: %1$s</string>
+    <string name="student_archived_info">%1$s న %2$s ద్వారా ఆర్కైవ్ చేయబడింది</string>
+    <string name="student_reason_label">కారణం: %1$s</string>
+    <string name="student_time_range">సమయం: %1$s నుండి %2$s వరకు</string>
+    <string name="student_session_in_progress">సెషన్ కొనసాగుతోంది</string>
+    <string name="student_duration_mins">వ్యవధి: %1$d నిమిషాలు</string>
+    <string name="student_classwork_label">తరగతి పని: %1$s</string>
+    <string name="student_homework_label">హోంవర్క్: %1$s</string>
+    <string name="student_notes_label">గమనికలు: %1$s</string>
+    <string name="student_by_teacher">ఉపాధ్యాయుడు: %1$s</string>
+
+    <!-- ── పేరెంట్ డ్యాష్‌బోర్డ్ ─────────────────────────────────────────── -->
+    <string name="parent_submitted_at">%1$s IST న సమర్పించబడింది</string>
+    <string name="parent_edited_by">సవరించబడింది • %1$s</string>
 </resources>

@@ -57,6 +57,8 @@ import com.runforvictory.tuition.R
 import com.runforvictory.tuition.core.theme.BrandGoldPrimary
 import com.runforvictory.tuition.core.theme.BrandNavyPrimary
 import com.runforvictory.tuition.core.theme.BrandTealPrimary
+import com.runforvictory.tuition.core.localization.LanguageSelectorButton
+import com.runforvictory.tuition.core.localization.LocaleManager
 import com.runforvictory.tuition.core.theme.StatusError
 import com.runforvictory.tuition.core.theme.StatusSuccess
 import com.runforvictory.tuition.domain.UserRole
@@ -65,7 +67,8 @@ import com.runforvictory.tuition.domain.UserRole
 fun LoginScreen(
     viewModel: AuthViewModel,
     onLoginSuccess: (UserRole) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    localeManager: LocaleManager? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -106,6 +109,20 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Accessible Language Switcher in top right
+            if (localeManager != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    LanguageSelectorButton(
+                        localeManager = localeManager,
+                        tint = BrandNavyPrimary
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             // Brand Logo & Header
             Box(
                 modifier = Modifier

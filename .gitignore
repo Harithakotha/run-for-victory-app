@@ -46,6 +46,9 @@ proguard/
 # Keystore files
 *.jks
 *.keystore
+keystore/
+*.key
+
 
 # Google Services / Secrets
 google-services.json

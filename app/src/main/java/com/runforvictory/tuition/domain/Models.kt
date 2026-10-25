@@ -210,6 +210,7 @@ data class TutorMonthlySummary(
 
 data class DailyWorkReport(
     val id: String,
+    val centreId: String = "10000000-0000-0000-0000-000000000001",
     val studentId: String,
     val studentName: String,
     val tutorId: String,
@@ -218,8 +219,16 @@ data class DailyWorkReport(
     val subject: String,
     val workCompleted: String,
     val homework: String? = null,
+    val pendingWork: String? = null,
     val progressNotes: String? = null,
-    val idempotencyKey: String
+    val createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")),
+    val updatedAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")),
+    val isEdited: Boolean = false,
+    val editedBy: String? = null,
+    val editedByName: String? = null,
+    val editReason: String? = null,
+    val editedAt: ZonedDateTime? = null,
+    val idempotencyKey: String = java.util.UUID.randomUUID().toString()
 )
 
 data class TuitionCenterConfig(
@@ -233,4 +242,77 @@ data class TuitionCenterConfig(
     val maxAccuracyMeters: Double = 60.0,
     val maxLocationAgeSeconds: Long = 120L,
     val ownerOverridePolicy: String = "Owner can override GPS failures with documented audit reason"
+)
+
+// ── In-App Notifications ──────────────────────────────────────────────────────
+enum class NotificationType {
+    ATTENDANCE_CHECK_IN,
+    ATTENDANCE_CHECK_OUT,
+    WORK_REPORT_ADDED,
+    WORK_REPORT_EDITED,
+    INVITATION_SENT,
+    CENTRE_ANNOUNCEMENT
+}
+
+data class AppNotification(
+    val id: String,
+    val recipientId: String,
+    val centreId: String = "10000000-0000-0000-0000-000000000001",
+    val type: NotificationType,
+    val title: String,
+    val body: String,
+    val relatedEntityId: String? = null,
+    val isRead: Boolean = false,
+    val createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"))
+)
+
+// ── Notification Preferences & Push Delivery Models ─────────────────────────
+data class NotificationPreferences(
+    val userId: String,
+    val pushEnabled: Boolean = true,
+    val workReportsEnabled: Boolean = true,
+    val attendanceEnabled: Boolean = true,
+    val announcementsEnabled: Boolean = true
+)
+
+data class DeviceToken(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val userId: String,
+    val token: String,
+    val platform: String = "android",
+    val deviceInfo: String? = null,
+    val isValid: Boolean = true,
+    val lastSeenAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")),
+    val createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"))
+)
+
+data class PushPayload(
+    val notificationId: String,
+    val type: NotificationType,
+    val title: String,
+    val body: String,
+    val publicTitle: String = "Run for Victory Update",
+    val publicBody: String = "New tuition update available.",
+    val data: Map<String, String> = emptyMap(),
+    val idempotencyKey: String? = null
+)
+
+data class NotificationDeliveryResult(
+    val success: Boolean,
+    val inAppStored: Boolean,
+    val pushDispatched: Boolean,
+    val tokenInvalidated: Boolean = false,
+    val messageId: String? = null,
+    val failureReason: String? = null
+)
+
+// ── Parent attendance summary helpers ─────────────────────────────────────────
+data class ParentWeeklySummary(
+    val weekLabel: String,
+    val totalDays: Int,
+    val presentDays: Int,
+    val absentDays: Int,
+    val lateDays: Int,
+    val excusedDays: Int,
+    val attendanceRate: Float    // 0.0..100.0
 )

@@ -1,0 +1,55 @@
+# ==============================================================================
+# Run for Victory - Supabase Production Configuration
+# Project: Run for Victory (By Ravi Kumar)
+# Target: PostgreSQL 15+ & Supabase Edge Runtime
+# ==============================================================================
+
+project_id = "run-for-victory"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[db.pooler]
+enabled = true
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[auth]
+enabled = true
+port = 54324
+site_url = "https://runforvictory.com"
+additional_redirect_urls = [
+    "runforvictory://auth/callback",
+    "runforvictory://auth/reset-password",
+    "https://runforvictory.com/auth/callback"
+]
+jwt_expiry = 86400
+enable_signup = false # Strict invitation-only provisioning model
+email_confirm = true
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = true
+# 7-day token expiry for invites matching database TTL
+otp_expiry = 604800
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[functions.send-push-notification]
+verify_jwt = true
+
+[functions.cron-session-cleanup]
+verify_jwt = true

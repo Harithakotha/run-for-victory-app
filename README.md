@@ -175,15 +175,20 @@ node supabase/tests/verify_security_rules.js
 - **Bonus Test 10 (GPS Accuracy)**: Inaccurate GPS reading (>60m) is rejected. ➔ **PASS**
 
 ### 2. Android Client Tests & Build
-- `.\gradlew.bat testDebugUnitTest` ➔ **50 unit tests passed, 0 failures**:
-  - `StudentAttendanceTest`: 15/15 tests passed (arrival/departure, duplicate check-in, duplicate checkout, check-out without check-in, network retry idempotency replay, archived student guard, owner correction with audit trail, non-owner rejection, invalid reason rejection, departure earlier than arrival rejection, excused status, daily summary, monthly summary, midnight/timezone boundary in `Asia/Kolkata`).
-  - `StudentManagementTest`: 8/8 tests passed (create, edit, duplicate rejection, archive, active list exclusion, restore, history preservation, permanent deletion guard).
-  - `AccountManagementTest`: 7/7 tests passed (session expiry, token validation, user deactivation, role protection).
-  - `AuthValidationTest`: 6/6 tests passed (credential validation, email formatting).
-  - `AttendanceValidationTest`: 3/3 tests passed.
-  - `WorkReportValidationTest`: 3/3 tests passed.
-  - `HaversineDistanceTest`: 3/3 tests passed.
-  - `LocationValidatorTest`: 5/5 tests passed (mock detection, accuracy tolerance, geofence radius).
-- `.\gradlew.bat assembleDebug` ➔ **Debug APK generated (16.4 MB, `app-debug.apk`)**.
+- `.\gradlew.bat testDebugUnitTest` ➔ **117 unit tests passed, 0 failures**:
+  - `BrandingAndLocalizationTest`: 10/10 passed (language switching EN↔TE, cold-start restart persistence, unsupported locale fallback, 100% key parity between English and Telugu catalogs, brand palette Navy/Teal/Gold, vector logo elements, replaceable launcher icons, Asia/Kolkata date/time formatting, supported language metadata).
+  - `NotificationAndPushTest`: 10/10 passed (independent PostgreSQL in-app storage, FCM delivery queue, lock-screen privacy redaction, parent-child isolation, invalid token rotation/cleanup, preference toggles, retry idempotency, non-rollback on push failure).
+  - `ParentDashboardTest`: 19/19 passed (multi-child selector, active/archived chips, today's attendance card, arrival/departure without fabricated times, weekly summary, monthly summary, report history, date filters, unread notifications, session expiration redirect).
+  - `WorkReportTest`: 18/18 passed (report submission, validation, teacher authorship preservation, audited corrections, retry idempotency, date-sorted history).
+  - `StudentAttendanceTest`: 15/15 passed (arrival/departure, duplicate check-in, duplicate checkout, check-out without check-in, network retry idempotency replay, archived student guard, owner correction with audit trail, non-owner rejection, invalid reason rejection, departure earlier than arrival rejection, excused status, daily summary, monthly summary, midnight/timezone boundary in `Asia/Kolkata`).
+  - `TutorAttendanceTest`: 15/15 passed (on-demand foreground location, Haversine server-side verification, geofence radius rejection, accuracy tolerance, anti-staleness, mock provider rejection, single open session constraint, owner audited overrides).
+  - `StudentManagementTest`: 8/8 passed (create, edit, duplicate rejection, archive, active list exclusion, restore, history preservation, permanent deletion guard).
+  - `AccountManagementTest`: 7/7 passed (session expiry, token validation, user deactivation, role protection).
+  - `AuthValidationTest`: 6/6 passed (credential validation, email formatting).
+  - `LocationValidatorTest`: 5/5 passed (mock detection, accuracy tolerance, geofence radius).
+  - `AttendanceValidationTest`: 3/3 passed.
+  - `WorkReportValidationTest`: 3/3 passed.
+  - `HaversineDistanceTest`: 3/3 passed.
+- `.\gradlew.bat assembleDebug` ➔ **SUCCESSFUL (Debug APK generated)**.
 - `.\gradlew.bat lintDebug` ➔ **0 errors**.
 

@@ -13,3 +13,13 @@
     @androidx.compose.runtime.Composable *;
     @androidx.compose.runtime.ReadOnlyComposable *;
 }
+
+# Strip logging calls in release builds for privacy and performance
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+}
+

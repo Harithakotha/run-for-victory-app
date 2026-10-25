@@ -10,9 +10,15 @@ import com.runforvictory.tuition.domain.TuitionCenterConfig
 import com.runforvictory.tuition.domain.TutorAttendanceRecord
 import com.runforvictory.tuition.domain.UserProfile
 import com.runforvictory.tuition.domain.UserRole
+import com.runforvictory.tuition.domain.AppNotification
 import com.runforvictory.tuition.domain.AttendanceDailySummary
 import com.runforvictory.tuition.domain.AttendanceMonthlySummary
+import com.runforvictory.tuition.domain.DeviceToken
 import com.runforvictory.tuition.domain.GpsVerificationStatus
+import com.runforvictory.tuition.domain.NotificationDeliveryResult
+import com.runforvictory.tuition.domain.NotificationPreferences
+import com.runforvictory.tuition.domain.ParentWeeklySummary
+import com.runforvictory.tuition.domain.PushPayload
 import com.runforvictory.tuition.domain.StudentAttendanceStatus
 import com.runforvictory.tuition.domain.TutorMonthlySummary
 import kotlinx.coroutines.flow.Flow
@@ -47,6 +53,7 @@ interface StudentRepository {
     suspend fun restoreStudent(id: String): Resource<Unit>
     suspend fun getStudentHistory(studentId: String): Resource<StudentHistory>
     suspend fun permanentDeleteStudent(id: String, confirmationPhrase: String, justification: String): Resource<Unit>
+    fun getLinkedStudentsForParent(parentId: String): Flow<List<Student>>
 }
 
 interface AttendanceRepository {
@@ -102,13 +109,48 @@ interface AttendanceRepository {
         newCheckOut: ZonedDateTime?,
         reason: String
     ): Resource<TutorAttendanceRecord>
+
+    // Parent-authorized attendance queries (server-enforced parent_children isolation)
+    fun getAttendanceForParent(parentId: String, studentId: String): Flow<List<StudentAttendanceRecord>>
+    suspend fun getWeeklySummaryForParent(parentId: String, studentId: String): Resource<ParentWeeklySummary>
+    suspend fun getMonthlySummaryForParent(parentId: String, studentId: String, year: Int, month: Int): Resource<AttendanceMonthlySummary>
 }
 
 interface WorkReportRepository {
     suspend fun createReport(report: DailyWorkReport): Resource<DailyWorkReport>
-    suspend fun editReport(reportId: String, workCompleted: String, homework: String?, notes: String?, reason: String): Resource<DailyWorkReport>
+    suspend fun editReport(
+        reportId: String,
+        subject: String,
+        workCompleted: String,
+        homework: String?,
+        pendingWork: String?,
+        progressNotes: String?,
+        reason: String
+    ): Resource<DailyWorkReport>
     fun getReportsForStudent(studentId: String): Flow<List<DailyWorkReport>>
     fun getReportsByTutor(tutorId: String): Flow<List<DailyWorkReport>>
+    fun getAllReportsForDate(date: LocalDate): Flow<List<DailyWorkReport>>
+    fun getReportsForParent(parentId: String, studentId: String? = null): Flow<List<DailyWorkReport>>
+    suspend fun getReportById(reportId: String): Resource<DailyWorkReport>
+}
+
+interface NotificationRepository {
+    fun getNotificationsForUser(userId: String): Flow<List<AppNotification>>
+    fun getUnreadCount(userId: String): Flow<Int>
+    suspend fun markAsRead(notificationId: String): Resource<Unit>
+    suspend fun markAllAsRead(userId: String): Resource<Unit>
+    suspend fun refreshNotifications(userId: String): Resource<Unit>
+    suspend fun getPreferences(userId: String): Resource<NotificationPreferences>
+    suspend fun updatePreferences(preferences: NotificationPreferences): Resource<Unit>
+    suspend fun registerDeviceToken(userId: String, token: String, deviceInfo: String? = null): Resource<Unit>
+    fun getDeviceTokens(userId: String): Flow<List<DeviceToken>>
+    suspend fun invalidateDeviceToken(token: String): Resource<Unit>
+    suspend fun sendNotification(
+        recipientId: String,
+        notification: AppNotification,
+        pushPayload: PushPayload? = null,
+        idempotencyKey: String? = null
+    ): Resource<NotificationDeliveryResult>
 }
 
 interface TuitionCenterRepository {

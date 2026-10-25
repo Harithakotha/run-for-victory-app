@@ -109,4 +109,27 @@ object InputValidator {
         }
         return ValidationResult.Valid
     }
+
+    fun validateWorkReportFull(studentId: String?, subject: String?, workCompleted: String?): ValidationResult {
+        if (studentId.isNullOrBlank()) {
+            return ValidationResult.Invalid("Please select a student.")
+        }
+        if (subject.isNullOrBlank()) {
+            return ValidationResult.Invalid("Subject is required.")
+        }
+        if (workCompleted.isNullOrBlank()) {
+            return ValidationResult.Invalid("Work completed details are required.")
+        }
+        return ValidationResult.Valid
+    }
+
+    fun validateReportEditReason(reason: String?): ValidationResult {
+        if (reason.isNullOrBlank()) {
+            return ValidationResult.Invalid("Edit reason is required for audit trail.")
+        }
+        if (reason.trim().length < 5) {
+            return ValidationResult.Invalid("Please provide an edit explanation (minimum 5 characters).")
+        }
+        return ValidationResult.Valid
+    }
 }
